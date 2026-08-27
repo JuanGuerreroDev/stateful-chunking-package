@@ -4,22 +4,23 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/stateful-chunking/laravel-package.svg?style=flat-square)](https://packagist.org/packages/stateful-chunking/laravel-package)
 [![License](https://img.shields.io/packagist/l/stateful-chunking/laravel-package.svg?style=flat-square)](LICENSE)
 
-High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 12** built with **Hexagonal Architecture** and **SOLID principles**. Powered by **Redis** for state tracking, session TTL management, and atomic byte reassembly.
+High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 12** built with **Hexagonal Architecture** and **SOLID principles**. Powered by a **Multi-Driver State Persistence** system (supporting Laravel Cache stores and Redis) for session tracking, state TTL management, and atomic byte reassembly.
 
 ---
 
-## 🚀 Features
+## Features
 
-- **Decoupled Backend Package**: 100% pure Laravel backend package. Fits into any existing API or microservice.
-- **Redis Session Management**: Tracks chunk completion maps, upload progress, and TTLs atomically.
-- **Dual-Layer Integrity**: Validates chunk checksums and full assembled file checksums against SHA-256 hashes.
+- **Decoupled Backend Package**: 100% pure Laravel backend package. Fits seamlessly into any existing API or microservice.
+- **Multi-Driver State Persistence**: Works out-of-the-box using Laravel 12's default cache system (`file`, `database`, `array`, `memcached`) or atomic `redis` driver.
+- **Dual-Layer Integrity Validation**: Validates individual chunk checksums and full assembled file integrity against SHA-256 hashes.
 - **Configurable Storage**: Assembles files using Laravel's `Storage` facade (`local`, `s3`, `gcs`, etc.).
+- **Garbage Collection (Stale Cleanup)**: Built-in Artisan command (`php artisan stateful-chunking:clear-stale`) for purging expired upload sessions and orphaned temporary files.
 - **Auto-Discovery & Zero Setup**: Auto-registers `StatefulChunkingServiceProvider` and REST API endpoints out-of-the-box.
 - **Customizable Routes**: Custom prefix, route middlewares (`auth:sanctum`, `api`), and config overrides.
 
 ---
 
-## 📦 Installation
+## Installation
 
 Install the package via Composer:
 
@@ -37,23 +38,54 @@ This will create `config/stateful-chunking.php` in your application.
 
 ---
 
-## ⚙️ Configuration
+## Configuration & Driver Setup
 
-Customize the package parameters in `config/stateful-chunking.php` or via `.env`:
+Customize package parameters in `config/stateful-chunking.php` or via `.env`:
 
 ```env
+# Persistence Driver: 'cache' (default, uses Laravel Cache) or 'redis' (atomic Redis client)
+STATEFUL_CHUNKING_DRIVER=cache
+
+# Specific Cache Store (used when driver is 'cache'): default, file, database, redis, etc.
+STATEFUL_CHUNKING_CACHE_STORE=default
+
+# Routes & Endpoint Configuration
 STATEFUL_CHUNKING_ROUTES_ENABLED=true
 STATEFUL_CHUNKING_ROUTE_PREFIX=api/chunks
+
+# File & Session Limits
 STATEFUL_CHUNKING_SIZE_BYTES=2097152
-STATEFUL_CHUNKING_REDIS_TTL=21600
-STATEFUL_CHUNKING_REDIS_CONNECTION=default
+STATEFUL_CHUNKING_SESSION_TTL=21600
+
+# Storage Disk & Path
 STATEFUL_CHUNKING_STORAGE_DISK=local
 STATEFUL_CHUNKING_STORAGE_PATH=uploads
 ```
 
 ---
 
-## 🔌 API Endpoints Specification
+## Maintenance & Garbage Collection
+
+To clean up expired upload sessions and orphaned temporary chunk files from storage, run the Artisan garbage collection command:
+
+```bash
+php artisan stateful-chunking:clear-stale
+```
+
+### Scheduling Automatic Cleanup
+
+You can schedule this command in your application's `routes/console.php` (Laravel 11/12) or `app/Console/Kernel.php` (Laravel 10):
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+// Run garbage collection every hour
+Schedule::command('stateful-chunking:clear-stale')->hourly();
+```
+
+---
+
+## API Endpoints Specification
 
 When `STATEFUL_CHUNKING_ROUTES_ENABLED` is true, the package automatically exposes 5 REST endpoints:
 
@@ -63,17 +95,17 @@ When `STATEFUL_CHUNKING_ROUTES_ENABLED` is true, the package automatically expos
 | `POST` | `/api/chunks/upload` | Receives and stores an individual chunk payload |
 | `GET` | `/api/chunks/status/{sessionId}` | Queries active chunk session status and pending chunk indices |
 | `POST` | `/api/chunks/complete` | Triggers stream reassembly, integrity hash validation, and session cleanup |
-| `DELETE` | `/api/chunks/cancel/{sessionId}` | Cancels an active session and purges Redis state and temporary chunks |
+| `DELETE` | `/api/chunks/cancel/{sessionId}` | Cancels an active session and purges state and temporary chunks |
 
 ---
 
-## 💡 Frontend Integration Guide (Client-side WebCrypto / JS)
+## Frontend Integration Guide (Client-side WebCrypto / JS)
 
 The frontend client application is responsible for slicing the file into chunks, computing SHA-256 hashes, and invoking the REST endpoints.
 
 ### Frontend Hashing Requirement (WebCrypto)
 
-It is recommended to compute SHA-256 checksums in the browser using the native **WebCrypto API** (`window.crypto.subtle.digest`):
+Compute SHA-256 checksums in the browser using the native **WebCrypto API** (`window.crypto.subtle.digest`):
 
 ```typescript
 // Helper function to compute SHA-256 in browser
@@ -135,9 +167,9 @@ console.log('File successfully assembled at:', data.path);
 
 ---
 
-## 🧪 Testing
+## Testing
 
-Run isolated package tests via Pest and Orchestra Testbench inside the package directory:
+Run isolated package tests via Pest and Orchestra Testbench:
 
 ```bash
 vendor/bin/pest
@@ -145,6 +177,6 @@ vendor/bin/pest
 
 ---
 
-## 📄 License
+## License
 
 The MIT License (MIT). Please see [License File](LICENSE) for more information.
