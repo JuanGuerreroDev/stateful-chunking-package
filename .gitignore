@@ -1,0 +1,8 @@
+/vendor
+.env
+/aidlc-docs
+/.agents
+/node_modules
+.npm
+composer.lock
+docker-compose.yml
