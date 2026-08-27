@@ -1,0 +1,46 @@
+{
+    "name": "stateful-chunking/laravel-package",
+    "description": "Resilient Stateful Chunking backend package for Laravel powered by Redis state tracking and SHA-256 checksum verification.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Juan Guerrero",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/contracts": "^10.0|^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
+        "pestphp/pest": "^2.0|^3.0|^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "StatefulChunking\\LaravelPackage\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "StatefulChunking\\LaravelPackage\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StatefulChunking\\LaravelPackage\\Providers\\StatefulChunkingServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
