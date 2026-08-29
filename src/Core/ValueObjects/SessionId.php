@@ -7,19 +7,19 @@ namespace StatefulChunking\LaravelPackage\Core\ValueObjects;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
-final class SessionId
+final readonly class SessionId
 {
-    public readonly string $value;
+    public string $value;
 
     public function __construct(?string $value = null)
     {
         $id = $value ?? Str::uuid()->toString();
 
-        if (trim($id) === '') {
-            throw new InvalidArgumentException('SessionId cannot be empty.');
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            throw new InvalidArgumentException('SessionId must be a valid UUID v4 string.');
         }
 
-        $this->value = $id;
+        $this->value = strtolower($id);
     }
 
     public static function generate(): self
