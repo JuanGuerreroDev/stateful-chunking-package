@@ -6,15 +6,15 @@ namespace StatefulChunking\LaravelPackage\Core\ValueObjects;
 
 use InvalidArgumentException;
 
-final class ChunkHash
+final readonly class ChunkHash
 {
-    public readonly string $value;
+    public string $value;
 
     public function __construct(string $value)
     {
         $trimmed = trim($value);
-        if (strlen($trimmed) < 8) {
-            throw new InvalidArgumentException('ChunkHash must be a valid hash string of at least 8 characters.');
+        if (!preg_match('/^[a-f0-9]{64}$/i', $trimmed)) {
+            throw new InvalidArgumentException('ChunkHash must be a valid 64-character SHA-256 hex string.');
         }
 
         $this->value = strtolower($trimmed);

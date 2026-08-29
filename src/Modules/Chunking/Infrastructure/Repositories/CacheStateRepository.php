@@ -28,6 +28,11 @@ final class CacheStateRepository implements StateRepositoryInterface
         return sprintf('chunk_session:%s', $sessionId);
     }
 
+    private function lockKey(string $sessionId): string
+    {
+        return sprintf('chunk_session_lock:%s', $sessionId);
+    }
+
     private function fingerprintKey(string $fingerprint): string
     {
         return sprintf('chunk_fingerprint:%s', $fingerprint);
@@ -103,15 +108,23 @@ final class CacheStateRepository implements StateRepositoryInterface
 
     public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status): void
     {
-        $session = $this->getSession($sessionId);
-        if (!$session) {
-            return;
-        }
+        $store = Cache::store($this->getStoreName());
+        $lock = $store->lock($this->lockKey($sessionId), 10);
 
-        $session->chunksMap[$chunkIndex] = $status;
-        $session->markChunkCompleted($chunkIndex);
+        $lock->block(5, function () use ($sessionId, $chunkIndex, $status) {
+            $session = $this->getSession($sessionId);
+            if (!$session) {
+                return;
+            }
 
-        $this->saveSession($session);
+            if ($status === 'completed') {
+                $session->markChunkCompleted($chunkIndex);
+            } else {
+                $session->chunksMap[$chunkIndex] = $status;
+            }
+
+            $this->saveSession($session);
+        });
     }
 
     public function deleteSession(string $sessionId): void
