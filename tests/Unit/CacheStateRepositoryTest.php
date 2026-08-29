@@ -6,22 +6,13 @@ use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
 use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
 use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Enums\SessionStatus;
 use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Repositories\RedisStateRepository;
 
-test('ServiceProvider resolves CacheStateRepository when driver is cache or array', function () {
+test('ServiceProvider resolves unified CacheStateRepository for all state drivers', function () {
     config()->set('stateful-chunking.driver', 'array');
+    expect(app(StateRepositoryInterface::class))->toBeInstanceOf(CacheStateRepository::class);
 
-    $repository = app(StateRepositoryInterface::class);
-
-    expect($repository)->toBeInstanceOf(CacheStateRepository::class);
-});
-
-test('ServiceProvider resolves RedisStateRepository when driver is redis', function () {
     config()->set('stateful-chunking.driver', 'redis');
-
-    $repository = app(StateRepositoryInterface::class);
-
-    expect($repository)->toBeInstanceOf(RedisStateRepository::class);
+    expect(app(StateRepositoryInterface::class))->toBeInstanceOf(CacheStateRepository::class);
 });
 
 test('CacheStateRepository saves and retrieves session correctly', function () {
@@ -56,7 +47,7 @@ test('CacheStateRepository saves and retrieves session correctly', function () {
     expect($byFingerprint->sessionId->value)->toBe($session->sessionId->value);
 });
 
-test('CacheStateRepository updates chunk status and deletes session', function () {
+test('CacheStateRepository updates chunk status atomically and deletes session', function () {
     config()->set('stateful-chunking.driver', 'array');
     /** @var CacheStateRepository $repo */
     $repo = app(CacheStateRepository::class);

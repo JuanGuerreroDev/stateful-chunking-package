@@ -9,12 +9,13 @@ test('Package ChunkSize validates multiples of 256 KB', function () {
     expect($size->value)->toBe(2097152);
 });
 
-test('Package SessionId generates non-empty string', function () {
+test('Package SessionId generates valid UUID v4', function () {
     $session = SessionId::generate();
-    expect($session->value)->not()->toBeEmpty();
+    expect($session->value)->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i');
 });
 
-test('Package ChunkHash formats hash correctly', function () {
-    $hash = ChunkHash::fromString('  abc123DEF456  ');
-    expect((string) $hash)->toBe('abc123def456');
+test('Package ChunkHash formats valid SHA-256 hash correctly', function () {
+    $validHash = 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855';
+    $hash = ChunkHash::fromString('  ' . $validHash . '  ');
+    expect((string) $hash)->toBe(strtolower($validHash));
 });
