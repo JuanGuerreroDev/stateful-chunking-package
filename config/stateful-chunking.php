@@ -20,6 +20,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Rate Limiting & Throttling
+    |--------------------------------------------------------------------------
+    |
+    | Differentiated rate limits per endpoint operation (requests per minute).
+    | Protects against Denial of Service (DoS) and memory exhaustion.
+    |
+    */
+    'rate_limits' => [
+        'enabled' => (bool) env('STATEFUL_CHUNKING_RATE_LIMIT_ENABLED', true),
+        'initiate' => (int) env('STATEFUL_CHUNKING_RATE_INITIATE', 10),
+        'upload' => (int) env('STATEFUL_CHUNKING_RATE_UPLOAD', 120),
+        'status' => (int) env('STATEFUL_CHUNKING_RATE_STATUS', 60),
+        'complete' => (int) env('STATEFUL_CHUNKING_RATE_COMPLETE', 20),
+        'cancel' => (int) env('STATEFUL_CHUNKING_RATE_CANCEL', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Stateful Parameters
     |--------------------------------------------------------------------------
     |
@@ -30,6 +48,8 @@ return [
     */
     'chunk_size_bytes' => (int) env('STATEFUL_CHUNKING_SIZE_BYTES', 2097152),
     'max_file_size_bytes' => (int) env('STATEFUL_CHUNKING_MAX_FILE_SIZE_BYTES', 10737418240), // 10 GB
+    'max_total_chunks' => (int) env('STATEFUL_CHUNKING_MAX_TOTAL_CHUNKS', 10000),
+    'forbidden_extensions' => ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'],
     'redis_session_ttl' => (int) env('STATEFUL_CHUNKING_REDIS_TTL', 21600),
     'max_chunk_retries' => (int) env('STATEFUL_CHUNKING_MAX_RETRIES', 3),
 
@@ -48,5 +68,6 @@ return [
     'redis_connection' => env('STATEFUL_CHUNKING_REDIS_CONNECTION', 'default'),
     'storage_disk' => env('STATEFUL_CHUNKING_STORAGE_DISK', 'local'),
     'storage_path' => env('STATEFUL_CHUNKING_STORAGE_PATH', 'uploads'),
+    'log_channel' => env('STATEFUL_CHUNKING_LOG_CHANNEL'),
 ];
 
