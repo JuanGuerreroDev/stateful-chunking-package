@@ -16,9 +16,9 @@ final class UploadChunkRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'session_id' => ['required', 'string'],
+            'session_id' => ['required', 'string', 'regex:/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i'],
             'chunk_index' => ['required', 'integer', 'min:0'],
-            'chunk_hash' => ['required', 'string', 'min:8'],
+            'chunk_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/i'],
             'file' => ['nullable'],
         ];
     }
