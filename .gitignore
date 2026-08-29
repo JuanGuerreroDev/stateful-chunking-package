@@ -6,3 +6,4 @@
 .npm
 composer.lock
 docker-compose.yml
+/docs/audits/
