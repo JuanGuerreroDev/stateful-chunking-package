@@ -13,12 +13,14 @@ final class LocalStorageAdapter implements FileStorageInterface
 {
     private function getDiskName(): string
     {
-        return config('stateful-chunking.storage_disk', 'local');
+        $disk = config('stateful-chunking.storage_disk', 'local');
+        return is_string($disk) ? $disk : 'local';
     }
 
     private function getBaseStoragePath(): string
     {
-        return config('stateful-chunking.storage_path', 'uploads');
+        $path = config('stateful-chunking.storage_path', 'uploads');
+        return is_string($path) ? $path : 'uploads';
     }
 
     private function chunkPath(string $sessionId, int $chunkIndex): string
@@ -93,7 +95,7 @@ final class LocalStorageAdapter implements FileStorageInterface
         // Validate assembled file SHA-256 hash if expected hash is provided
         if (strlen($expectedTotalHash) === 64) {
             $assembledHash = hash_file('sha256', $fullAbsolutePath);
-            if (strtolower($assembledHash) !== strtolower($expectedTotalHash)) {
+            if (!is_string($assembledHash) || strtolower($assembledHash) !== strtolower($expectedTotalHash)) {
                 @unlink($fullAbsolutePath);
                 throw new RuntimeException('Assembled file SHA-256 hash mismatch');
             }
