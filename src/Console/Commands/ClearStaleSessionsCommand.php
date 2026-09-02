@@ -26,10 +26,11 @@ final class ClearStaleSessionsCommand extends Command
 
     public function handle(StateRepositoryInterface $repository, FileStorageInterface $storage): int
     {
-        $sessionId = $this->option('session');
+        $rawSessionId = $this->option('session');
+        $sessionId = is_string($rawSessionId) ? $rawSessionId : null;
 
-        if ($sessionId) {
-            $session = $repository->getSession((string) $sessionId);
+        if ($sessionId !== null && trim($sessionId) !== '') {
+            $session = $repository->getSession($sessionId);
 
             if ($session) {
                 $storage->deleteTemporaryChunks($session->sessionId->value, $session->totalChunks);

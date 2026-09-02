@@ -21,17 +21,20 @@ use Exception;
 
 final class ChunkUploadController extends Controller
 {
-    private function logger()
+    private function logger(): \Psr\Log\LoggerInterface
     {
         $channel = config('stateful-chunking.log_channel');
-        return Log::channel($channel);
+        $channelName = is_string($channel) ? $channel : null;
+        return Log::channel($channelName);
     }
 
     public function initiate(
         InitiateChunkRequest $request,
         InitiateChunkSessionAction $action
     ): JsonResponse {
-        $dto = InitiateSessionDTO::fromArray($request->validated());
+        /** @var array<string, mixed> $validated */
+        $validated = $request->validated();
+        $dto = InitiateSessionDTO::fromArray($validated);
         $session = $action->handle($dto);
 
         $this->logger()->info('Chunk upload session initiated', [
@@ -52,11 +55,15 @@ final class ChunkUploadController extends Controller
         UploadChunkRequest $request,
         UploadChunkAction $action
     ): JsonResponse {
+        /** @var array<string, mixed> $validated */
         $validated = $request->validated();
         
         $content = '';
         if ($request->hasFile('file')) {
-            $content = (string) file_get_contents($request->file('file')->getRealPath());
+            $file = $request->file('file');
+            if ($file instanceof \Illuminate\Http\UploadedFile) {
+                $content = (string) file_get_contents($file->getRealPath());
+            }
         } elseif ($request->has('file') && is_string($request->input('file'))) {
             $content = (string) $request->input('file');
         } else {
@@ -76,9 +83,12 @@ final class ChunkUploadController extends Controller
                 'data' => $session->toArray(),
             ], 200);
         } catch (Exception $e) {
+            $sessionId = isset($validated['session_id']) && is_string($validated['session_id']) ? $validated['session_id'] : null;
+            $chunkIndex = isset($validated['chunk_index']) && (is_int($validated['chunk_index']) || is_string($validated['chunk_index'])) ? $validated['chunk_index'] : null;
+
             $this->logger()->warning('Chunk upload failed', [
-                'session_id' => $validated['session_id'] ?? null,
-                'chunk_index' => $validated['chunk_index'] ?? null,
+                'session_id' => $sessionId,
+                'chunk_index' => $chunkIndex,
                 'error' => $e->getMessage(),
                 'ip' => $request->ip(),
             ]);
@@ -117,11 +127,14 @@ final class ChunkUploadController extends Controller
     ): JsonResponse {
         $request->validate(['session_id' => 'required|string']);
 
+        $rawSessionId = $request->input('session_id');
+        $sessionId = is_string($rawSessionId) || is_numeric($rawSessionId) ? (string) $rawSessionId : '';
+
         try {
-            $result = $action->handle((string) $request->input('session_id'));
+            $result = $action->handle($sessionId);
 
             $this->logger()->info('File reassembled successfully', [
-                'session_id' => $request->input('session_id'),
+                'session_id' => $sessionId,
                 'result' => $result,
                 'ip' => $request->ip(),
             ]);
@@ -132,7 +145,7 @@ final class ChunkUploadController extends Controller
             ], 200);
         } catch (Exception $e) {
             $this->logger()->error('File reassembly failed', [
-                'session_id' => $request->input('session_id'),
+                'session_id' => $sessionId,
                 'error' => $e->getMessage(),
                 'ip' => $request->ip(),
             ]);
