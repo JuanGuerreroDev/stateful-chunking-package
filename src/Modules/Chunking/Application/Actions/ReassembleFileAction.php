@@ -15,6 +15,9 @@ final class ReassembleFileAction
         private readonly FileStorageInterface $storage
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function handle(string $sessionId): array
     {
         $session = $this->repository->getSession($sessionId);
@@ -40,6 +43,9 @@ final class ReassembleFileAction
             'file_name' => $session->fileName,
             'file_size' => $session->fileSize,
             'path' => $assembledPath,
+            'relative_path' => $assembledPath,
+            'computed_hash' => $session->totalHash->value,
+            'verified' => true,
         ];
     }
 }

@@ -15,12 +15,14 @@ final class CacheStateRepository implements StateRepositoryInterface
 {
     private function getTtl(): int
     {
-        return (int) config('stateful-chunking.redis_session_ttl', 21600);
+        $ttl = config('stateful-chunking.redis_session_ttl', 21600);
+        return is_numeric($ttl) ? (int) $ttl : 21600;
     }
 
     private function getStoreName(): ?string
     {
-        return config('stateful-chunking.cache_store') ?: config('cache.default');
+        $store = config('stateful-chunking.cache_store') ?: config('cache.default');
+        return is_string($store) ? $store : null;
     }
 
     private function sessionKey(string $sessionId): string
@@ -74,18 +76,26 @@ final class CacheStateRepository implements StateRepositoryInterface
         $chunksMap = [];
         if (isset($sessionData['chunks_map']) && is_array($sessionData['chunks_map'])) {
             foreach ($sessionData['chunks_map'] as $idx => $st) {
-                $chunksMap[(int) $idx] = (string) $st;
+                $chunksMap[(int) $idx] = is_string($st) || is_numeric($st) ? (string) $st : 'pending';
             }
         }
 
+        $rawSessionId = isset($sessionData['session_id']) && is_string($sessionData['session_id']) ? $sessionData['session_id'] : '';
+        $rawFileName = isset($sessionData['file_name']) && is_string($sessionData['file_name']) ? $sessionData['file_name'] : '';
+        $rawFileSize = isset($sessionData['file_size']) && is_numeric($sessionData['file_size']) ? (int) $sessionData['file_size'] : 0;
+        $rawTotalChunks = isset($sessionData['total_chunks']) && is_numeric($sessionData['total_chunks']) ? (int) $sessionData['total_chunks'] : 0;
+        $rawTotalHash = isset($sessionData['total_hash']) && is_string($sessionData['total_hash']) ? $sessionData['total_hash'] : '';
+        $rawFingerprint = isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) ? $sessionData['fingerprint'] : '';
+        $rawStatus = isset($sessionData['status']) && (is_string($sessionData['status']) || is_int($sessionData['status'])) ? $sessionData['status'] : 'pending';
+
         return new ChunkSession(
-            sessionId: SessionId::fromString($sessionData['session_id']),
-            fileName: $sessionData['file_name'],
-            fileSize: (int) $sessionData['file_size'],
-            totalChunks: (int) $sessionData['total_chunks'],
-            totalHash: ChunkHash::fromString($sessionData['total_hash']),
-            fingerprint: $sessionData['fingerprint'] ?? '',
-            status: SessionStatus::from($sessionData['status'] ?? 'pending'),
+            sessionId: SessionId::fromString($rawSessionId),
+            fileName: $rawFileName,
+            fileSize: $rawFileSize,
+            totalChunks: $rawTotalChunks,
+            totalHash: ChunkHash::fromString($rawTotalHash),
+            fingerprint: $rawFingerprint,
+            status: SessionStatus::from($rawStatus),
             chunksMap: $chunksMap
         );
     }
@@ -99,7 +109,7 @@ final class CacheStateRepository implements StateRepositoryInterface
         $store = Cache::store($this->getStoreName());
         $sessionId = $store->get($this->fingerprintKey($fingerprint));
 
-        if (!$sessionId) {
+        if (!is_string($sessionId) && !is_numeric($sessionId)) {
             return null;
         }
 
@@ -108,10 +118,11 @@ final class CacheStateRepository implements StateRepositoryInterface
 
     public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status): void
     {
+        /** @var \Illuminate\Cache\Repository&\Illuminate\Contracts\Cache\LockProvider $store */
         $store = Cache::store($this->getStoreName());
         $lock = $store->lock($this->lockKey($sessionId), 10);
 
-        $lock->block(5, function () use ($sessionId, $chunkIndex, $status) {
+        $lock->block(5, function () use ($sessionId, $chunkIndex, $status): void {
             $session = $this->getSession($sessionId);
             if (!$session) {
                 return;
