@@ -7,3 +7,8 @@
 composer.lock
 docker-compose.yml
 /docs/audits/
+/build/
+/coverage/
+.phpunit.cache
+testbench.yaml
+

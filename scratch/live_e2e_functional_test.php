@@ -104,7 +104,7 @@ echo "Response: " . json_encode($completeRes['body'], JSON_PRETTY_PRINT) . "\n\n
 
 if ($completeRes['code'] === 200) {
     echo "=========================================================================\n";
-    echo "🎉 SUCCESS: ALL 5 PACKAGE REST ENDPOINTS EXECUTED AND PASSED 100%! 🎉\n";
+    echo " SUCCESS: ALL 5 PACKAGE REST ENDPOINTS EXECUTED AND PASSED 100%! \n";
     echo "=========================================================================\n";
 } else {
     echo "ERROR: Reassembly failed!\n";

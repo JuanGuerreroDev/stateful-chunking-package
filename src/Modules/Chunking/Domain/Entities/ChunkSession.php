@@ -55,17 +55,23 @@ final class ChunkSession
         return true;
     }
 
+    /**
+     * @return array<int, int>
+     */
     public function getPendingChunkIndices(): array
     {
         $pending = [];
         foreach ($this->chunksMap as $index => $status) {
             if ($status !== 'completed') {
-                $pending[] = $index;
+                $pending[] = (int) $index;
             }
         }
         return $pending;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

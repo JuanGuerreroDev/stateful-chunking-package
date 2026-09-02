@@ -57,29 +57,42 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
             return;
         }
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-initiate', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute((int) config('stateful-chunking.rate_limits.initiate', 10))
-                ->by($request->user()?->id ?: $request->ip());
+        $resolveKey = function (\Illuminate\Http\Request $request): string {
+            $user = $request->user();
+            if (is_object($user) && property_exists($user, 'id') && (is_string($user->id) || is_int($user->id))) {
+                return (string) $user->id;
+            }
+            return $request->ip() ?? '127.0.0.1';
+        };
+
+        $getConfigLimit = function (string $key, int $default): int {
+            $val = config("stateful-chunking.rate_limits.{$key}", $default);
+            return is_numeric($val) ? (int) $val : $default;
+        };
+
+        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-initiate', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('initiate', 10))
+                ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-upload', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute((int) config('stateful-chunking.rate_limits.upload', 120))
-                ->by($request->user()?->id ?: $request->ip());
+        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-upload', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('upload', 120))
+                ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-status', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute((int) config('stateful-chunking.rate_limits.status', 60))
-                ->by($request->user()?->id ?: $request->ip());
+        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-status', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('status', 60))
+                ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-complete', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute((int) config('stateful-chunking.rate_limits.complete', 20))
-                ->by($request->user()?->id ?: $request->ip());
+        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-complete', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('complete', 20))
+                ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-cancel', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute((int) config('stateful-chunking.rate_limits.cancel', 20))
-                ->by($request->user()?->id ?: $request->ip());
+        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-cancel', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('cancel', 20))
+                ->by($resolveKey($request));
         });
     }
 }
