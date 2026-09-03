@@ -72,6 +72,15 @@ class E2EPackageIntegrationTest extends TestCase
 
         $this->assertEquals($totalHash, $reassembleData['computed_hash']);
         $this->assertTrue($reassembleData['verified']);
+        $this->assertArrayHasKey('upload_token', $reassembleData);
+        $this->assertNotEmpty($reassembleData['upload_token']);
+
+        // Verify that the upload token can be resolved by consumer facade
+        $stagedFile = \StatefulChunking\LaravelPackage\Facades\StatefulChunking::resolveToken($reassembleData['upload_token']);
+        $this->assertTrue($stagedFile->isValid());
+        $this->assertEquals($sessionId, $stagedFile->sessionId);
+        $this->assertEquals('e2e_verified_document.txt', $stagedFile->fileName);
+        $this->assertEquals($totalHash, $stagedFile->hash);
 
         // Verify assembled file content on storage
         $storedPath = $reassembleData['relative_path'];
