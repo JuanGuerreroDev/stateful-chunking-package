@@ -11,4 +11,6 @@ docker-compose.yml
 /coverage/
 .phpunit.cache
 testbench.yaml
+/scratch/
+/docs/proposals/
 

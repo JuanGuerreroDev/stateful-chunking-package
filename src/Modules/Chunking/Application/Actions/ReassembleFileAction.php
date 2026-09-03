@@ -6,13 +6,15 @@ namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions;
 
 use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
 use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
+use StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService;
 use RuntimeException;
 
 final class ReassembleFileAction
 {
     public function __construct(
         private readonly StateRepositoryInterface $repository,
-        private readonly FileStorageInterface $storage
+        private readonly FileStorageInterface $storage,
+        private readonly StatefulChunkingService $tokenService = new StatefulChunkingService()
     ) {}
 
     /**
@@ -36,10 +38,19 @@ final class ReassembleFileAction
             expectedTotalHash: $session->totalHash->value
         );
 
+        $uploadToken = $this->tokenService->generateToken(
+            sessionId: $sessionId,
+            tempPath: $assembledPath,
+            fileName: $session->fileName,
+            fileSize: $session->fileSize,
+            hash: $session->totalHash->value
+        );
+
         $this->repository->deleteSession($sessionId);
 
         return [
             'session_id' => $sessionId,
+            'upload_token' => $uploadToken,
             'file_name' => $session->fileName,
             'file_size' => $session->fileSize,
             'path' => $assembledPath,

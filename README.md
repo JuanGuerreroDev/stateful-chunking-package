@@ -13,6 +13,8 @@ High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 
 - **Decoupled Backend Package**: 100% pure Laravel backend package. Fits seamlessly into any existing API or microservice.
 - **Multi-Driver State Persistence**: Works out-of-the-box using Laravel 12's default cache system (`file`, `database`, `array`, `memcached`) or atomic `redis` driver.
 - **Dual-Layer Integrity Validation**: Validates individual chunk checksums and full assembled file integrity against SHA-256 hashes.
+- **Staged Upload Pattern & Cryptographic Tokens**: Returns AES-256 encrypted, HMAC-signed `upload_token`s upon completion. Protects against OWASP IDOR and Path Traversal with zero physical storage path exposure.
+- **Consumer DX Helpers & Validation Rule**: First-class `StatefulChunking` facade (`resolveToken`) and `ValidUploadToken` validation rule for clean, decoupled integration in downstream business modules.
 - **Configurable Storage**: Assembles files using Laravel's `Storage` facade (`local`, `s3`, `gcs`, etc.).
 - **Garbage Collection (Stale Cleanup)**: Built-in Artisan command (`php artisan stateful-chunking:clear-stale`) for purging expired upload sessions and orphaned temporary files.
 - **Auto-Discovery & Zero Setup**: Auto-registers `StatefulChunkingServiceProvider` and REST API endpoints out-of-the-box.
@@ -153,7 +155,7 @@ await fetch('/api/chunks/upload', {
 });
 ```
 
-### 3. Reassemble File
+### 3. Reassemble File & Receive Staged Upload Token
 
 ```typescript
 const response = await fetch('/api/chunks/complete', {
@@ -162,7 +164,93 @@ const response = await fetch('/api/chunks/complete', {
   body: JSON.stringify({ session_id: sessionId }),
 });
 const { data } = await response.json();
-console.log('File successfully assembled at:', data.path);
+console.log('Upload token received:', data.upload_token);
+// data.upload_token -> Crypted, HMAC-signed token for business form submission
+```
+
+---
+
+## Backend Consumer Integration Guide (Staged Upload Pattern)
+
+This package implements the **Staged Upload Pattern**. The chunking package acts as a secure staging landing area. The consumer application's business module (e.g., Multimedia, Invoices, User Documents) receives the `upload_token` from the frontend, validates it, and decides the permanent destination.
+
+### 1. FormRequest Validation with `ValidUploadToken`
+
+Validate incoming business requests using the built-in validation rule:
+
+```php
+namespace App\Modules\Multimedia\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use StatefulChunking\LaravelPackage\Rules\ValidUploadToken;
+
+class StoreMediaRequest extends FormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'title'        => 'required|string|max:255',
+            'album_id'     => 'required|integer|exists:albums,id',
+            'upload_token' => ['required', new ValidUploadToken()], // 🛡️ Rejects tampered/expired tokens with 422
+        ];
+    }
+}
+```
+
+### 2. Resolving Staged Files & Moving to Permanent Storage
+
+Use the `StatefulChunking` facade to safely decrypt the token and retrieve the `StagedFileDTO`:
+
+```php
+namespace App\Modules\Multimedia\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Multimedia\Http\Requests\StoreMediaRequest;
+use StatefulChunking\LaravelPackage\Facades\StatefulChunking;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use App\Models\Media;
+
+class MediaUploadController extends Controller
+{
+    public function store(StoreMediaRequest $request)
+    {
+        // 1. Resolve verified staged file from token
+        $staged = StatefulChunking::resolveToken($request->input('upload_token'));
+
+        // 2. Define your permanent business storage destination
+        $permanentPath = sprintf('media/albums/%d/%s_%s', 
+            $request->input('album_id'), 
+            Str::uuid(), 
+            $staged->fileName
+        );
+
+        // 3. Move from staging to permanent storage disk (e.g. S3)
+        $stream = Storage::disk($staged->disk)->readStream($staged->tempPath);
+        Storage::disk('s3')->writeStream($permanentPath, $stream);
+
+        // 4. Delete temporary staged file
+        Storage::disk($staged->disk)->delete($staged->tempPath);
+
+        // 5. Persist record in your database
+        $media = Media::create([
+            'user_id'   => auth()->id(),
+            'album_id'  => $request->input('album_id'),
+            'title'     => $request->input('title'),
+            'file_name' => $staged->fileName,
+            'path'      => $permanentPath,
+            'disk'      => 's3',
+            'mime_type' => $staged->mimeType() ?? 'application/octet-stream',
+            'size'      => $staged->fileSize,
+            'sha256'    => $staged->hash,
+        ]);
+
+        return response()->json([
+            'message' => 'Media stored successfully',
+            'data'    => $media,
+        ], 201);
+    }
+}
 ```
 
 ---
@@ -173,6 +261,12 @@ Run isolated package tests via Pest and Orchestra Testbench:
 
 ```bash
 vendor/bin/pest
+```
+
+Verify static analysis at PHPStan Level 10:
+
+```bash
+vendor/bin/phpstan analyse
 ```
 
 ---

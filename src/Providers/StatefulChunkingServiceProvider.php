@@ -25,6 +25,15 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
 
         $this->app->bind(StateRepositoryInterface::class, CacheStateRepository::class);
         $this->app->bind(FileStorageInterface::class, LocalStorageAdapter::class);
+
+        $this->app->singleton(
+            \StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService::class,
+            fn () => new \StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService()
+        );
+        $this->app->alias(
+            \StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService::class,
+            'stateful-chunking.service'
+        );
     }
 
     /**
