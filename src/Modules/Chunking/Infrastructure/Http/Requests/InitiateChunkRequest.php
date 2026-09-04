@@ -90,7 +90,20 @@ final class InitiateChunkRequest extends FormRequest
                 },
             ],
             'file_size' => ['required', 'integer', 'min:1', 'max:' . $maxFileSize],
-            'total_chunks' => ['required', 'integer', 'min:1', 'max:' . $maxChunks],
+            'total_chunks' => [
+                'required',
+                'integer',
+                'min:' . (function () {
+                    $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+                    $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
+                    $fileSizeInput = $this->input('file_size');
+                    if (is_numeric($fileSizeInput) && (int) $fileSizeInput > 0) {
+                        return max(1, (int) ceil((int) $fileSizeInput / $chunkSizeBytes));
+                    }
+                    return 1;
+                })(),
+                'max:' . $maxChunks,
+            ],
             'total_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/i'],
             'fingerprint' => ['nullable', 'string', 'max:255'],
         ];

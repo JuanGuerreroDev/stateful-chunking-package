@@ -74,6 +74,20 @@ final class ChunkUploadController extends Controller
             return response()->json(['message' => 'Chunk content cannot be empty'], 422);
         }
 
+        $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+        $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
+        $maxAllowedBytes = (int) ($chunkSizeBytes * 1.1);
+
+        if (strlen($content) > $maxAllowedBytes) {
+            return response()->json([
+                'message' => sprintf(
+                    'Chunk payload size (%d bytes) exceeds maximum allowed limit (%d bytes).',
+                    strlen($content),
+                    $maxAllowedBytes
+                ),
+            ], 413);
+        }
+
         try {
             $dto = UploadChunkDTO::fromArray($validated, $content);
             $session = $action->handle($dto);
