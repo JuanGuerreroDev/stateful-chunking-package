@@ -23,7 +23,8 @@ final class ChunkSession
         public SessionStatus $status = SessionStatus::PENDING,
         public array $chunksMap = [],
         public int $createdAt = 0,
-        public int $expiresAt = 0
+        public int $expiresAt = 0,
+        public ?string $ownerId = null
     ) {
         if (empty($this->chunksMap)) {
             for ($i = 0; $i < $totalChunks; $i++) {
@@ -97,6 +98,7 @@ final class ChunkSession
             'total_chunks' => $this->totalChunks,
             'total_hash' => $this->totalHash->value,
             'fingerprint' => $this->fingerprint,
+            'owner_id' => $this->ownerId,
             'status' => $this->status->value,
             'chunks_map' => $this->chunksMap,
             'pending_chunks' => $this->getPendingChunkIndices(),

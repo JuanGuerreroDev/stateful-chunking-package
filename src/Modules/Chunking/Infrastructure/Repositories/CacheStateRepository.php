@@ -52,6 +52,7 @@ final class CacheStateRepository implements StateRepositoryInterface
             'chunks_map' => $session->chunksMap,
             'created_at' => $session->createdAt,
             'expires_at' => $session->expiresAt,
+            'owner_id' => $session->ownerId,
         ];
 
         $store->put($this->sessionKey($session->sessionId->value), $sessionData, $ttl);
@@ -86,6 +87,7 @@ final class CacheStateRepository implements StateRepositoryInterface
         $rawStatus = isset($sessionData['status']) && (is_string($sessionData['status']) || is_int($sessionData['status'])) ? $sessionData['status'] : 'pending';
         $rawCreatedAt = isset($sessionData['created_at']) && is_numeric($sessionData['created_at']) ? (int) $sessionData['created_at'] : 0;
         $rawExpiresAt = isset($sessionData['expires_at']) && is_numeric($sessionData['expires_at']) ? (int) $sessionData['expires_at'] : 0;
+        $rawOwnerId = isset($sessionData['owner_id']) && is_string($sessionData['owner_id']) ? $sessionData['owner_id'] : null;
 
         $session = new ChunkSession(
             sessionId: SessionId::fromString($rawSessionId),
@@ -97,7 +99,8 @@ final class CacheStateRepository implements StateRepositoryInterface
             status: SessionStatus::from($rawStatus),
             chunksMap: $chunksMap,
             createdAt: $rawCreatedAt,
-            expiresAt: $rawExpiresAt
+            expiresAt: $rawExpiresAt,
+            ownerId: $rawOwnerId
         );
 
         if ($session->isExpired()) {

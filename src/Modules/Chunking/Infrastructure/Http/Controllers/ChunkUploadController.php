@@ -15,17 +15,62 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\ReassembleFil
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\UploadChunkDTO;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
 use Exception;
 
 final class ChunkUploadController extends Controller
 {
+    private StateRepositoryInterface $stateRepository;
+
+    public function __construct(?StateRepositoryInterface $repository = null)
+    {
+        $this->stateRepository = $repository ?? app(StateRepositoryInterface::class);
+    }
+
     private function logger(): \Psr\Log\LoggerInterface
     {
         $channel = config('stateful-chunking.log_channel');
         $channelName = is_string($channel) ? $channel : null;
         return Log::channel($channelName);
+    }
+
+    private function resolveCurrentOwnerId(Request $request): string
+    {
+        $user = $request->user();
+        if ($user && method_exists($user, 'getAuthIdentifier')) {
+            $authId = $user->getAuthIdentifier();
+            if ($authId !== null && $authId !== '') {
+                return 'user:' . (string) $authId;
+            }
+        }
+
+        $ip = $request->ip() ?: '127.0.0.1';
+        return 'ip:' . $ip;
+    }
+
+    private function verifySessionOwnership(?ChunkSession $session, Request $request): ?JsonResponse
+    {
+        if ($session === null) {
+            return null;
+        }
+
+        if ($session->ownerId !== null && $session->ownerId !== $this->resolveCurrentOwnerId($request)) {
+            $this->logger()->warning('Unauthorized attempt to access chunk session (IDOR prevented)', [
+                'session_id' => $session->sessionId->value,
+                'session_owner' => $session->ownerId,
+                'attempted_by' => $this->resolveCurrentOwnerId($request),
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'message' => 'Unauthorized action on chunk session.',
+            ], 403);
+        }
+
+        return null;
     }
 
     public function initiate(
@@ -34,7 +79,8 @@ final class ChunkUploadController extends Controller
     ): JsonResponse {
         /** @var array<string, mixed> $validated */
         $validated = $request->validated();
-        $dto = InitiateSessionDTO::fromArray($validated);
+        $ownerId = $this->resolveCurrentOwnerId($request);
+        $dto = InitiateSessionDTO::fromArray($validated, $ownerId);
         $session = $action->handle($dto);
 
         $this->logger()->info('Chunk upload session initiated', [
@@ -42,6 +88,7 @@ final class ChunkUploadController extends Controller
             'file_name' => $session->fileName,
             'file_size' => $session->fileSize,
             'total_chunks' => $session->totalChunks,
+            'owner_id' => $ownerId,
             'ip' => $request->ip(),
         ]);
 
@@ -57,6 +104,12 @@ final class ChunkUploadController extends Controller
     ): JsonResponse {
         /** @var array<string, mixed> $validated */
         $validated = $request->validated();
+
+        $rawSessionId = isset($validated['session_id']) && (is_string($validated['session_id']) || is_numeric($validated['session_id'])) ? (string) $validated['session_id'] : '';
+        $existingSession = $this->stateRepository->getSession($rawSessionId);
+        if ($authError = $this->verifySessionOwnership($existingSession, $request)) {
+            return $authError;
+        }
         
         $content = '';
         if ($request->hasFile('file')) {
@@ -119,6 +172,10 @@ final class ChunkUploadController extends Controller
     ): JsonResponse {
         try {
             $session = $action->handle($sessionId);
+            if ($authError = $this->verifySessionOwnership($session, request())) {
+                return $authError;
+            }
+
             return response()->json([
                 'data' => $session->toArray(),
             ], 200);
@@ -143,6 +200,11 @@ final class ChunkUploadController extends Controller
 
         $rawSessionId = $request->input('session_id');
         $sessionId = is_string($rawSessionId) || is_numeric($rawSessionId) ? (string) $rawSessionId : '';
+
+        $session = $this->stateRepository->getSession($sessionId);
+        if ($authError = $this->verifySessionOwnership($session, $request)) {
+            return $authError;
+        }
 
         try {
             $result = $action->handle($sessionId);
@@ -174,6 +236,11 @@ final class ChunkUploadController extends Controller
         string $sessionId,
         CancelChunkSessionAction $action
     ): JsonResponse {
+        $session = $this->stateRepository->getSession($sessionId);
+        if ($authError = $this->verifySessionOwnership($session, request())) {
+            return $authError;
+        }
+
         $action->handle($sessionId);
 
         $this->logger()->info('Chunk upload session cancelled', [
