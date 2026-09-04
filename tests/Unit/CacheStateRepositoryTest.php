@@ -8,15 +8,19 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 
 test('ServiceProvider resolves unified CacheStateRepository for all state drivers', function () {
-    config()->set('stateful-chunking.driver', 'array');
+    config()->set('stateful-chunking.cache_store', 'array');
     expect(app(StateRepositoryInterface::class))->toBeInstanceOf(CacheStateRepository::class);
 
-    config()->set('stateful-chunking.driver', 'redis');
+    config()->set('stateful-chunking.cache_store', 'redis');
+    expect(app(StateRepositoryInterface::class))->toBeInstanceOf(CacheStateRepository::class);
+
+    config()->set('stateful-chunking.driver', 'file');
     expect(app(StateRepositoryInterface::class))->toBeInstanceOf(CacheStateRepository::class);
 });
 
 test('CacheStateRepository saves and retrieves session correctly', function () {
-    config()->set('stateful-chunking.driver', 'array');
+    config()->set('stateful-chunking.cache_store', 'array');
+    config()->set('stateful-chunking.session_ttl', 7200);
     /** @var CacheStateRepository $repo */
     $repo = app(CacheStateRepository::class);
 
@@ -48,7 +52,7 @@ test('CacheStateRepository saves and retrieves session correctly', function () {
 });
 
 test('CacheStateRepository updates chunk status atomically and deletes session', function () {
-    config()->set('stateful-chunking.driver', 'array');
+    config()->set('stateful-chunking.cache_store', 'array');
     /** @var CacheStateRepository $repo */
     $repo = app(CacheStateRepository::class);
 

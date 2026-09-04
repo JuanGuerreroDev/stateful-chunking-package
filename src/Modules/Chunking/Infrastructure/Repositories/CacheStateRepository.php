@@ -15,13 +15,15 @@ final class CacheStateRepository implements StateRepositoryInterface
 {
     private function getTtl(): int
     {
-        $ttl = config('stateful-chunking.redis_session_ttl', 21600);
+        $ttl = config('stateful-chunking.session_ttl', 21600);
         return is_numeric($ttl) ? (int) $ttl : 21600;
     }
 
     private function getStoreName(): ?string
     {
-        $store = config('stateful-chunking.cache_store') ?: config('cache.default');
+        $store = config('stateful-chunking.cache_store')
+            ?: config('stateful-chunking.driver')
+            ?: config('cache.default');
         return is_string($store) ? $store : null;
     }
 
