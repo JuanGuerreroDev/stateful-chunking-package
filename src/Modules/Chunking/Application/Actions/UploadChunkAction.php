@@ -28,6 +28,18 @@ final class UploadChunkAction
             throw new RuntimeException(sprintf('Chunk index %d out of bounds.', $dto->chunkIndex));
         }
 
+        // Idempotency: if chunk is already marked completed, validate integrity and return existing session
+        if (($session->chunksMap[$dto->chunkIndex] ?? null) === 'completed') {
+            $computedHash = hash('sha256', $dto->content);
+            if (!hash_equals(strtolower($dto->chunkHash->value), strtolower($computedHash))) {
+                throw new RuntimeException(
+                    sprintf('Chunk %d integrity check failed: SHA-256 hash mismatch.', $dto->chunkIndex)
+                );
+            }
+
+            return $session;
+        }
+
         // Store chunk payload & validate chunk SHA-256
         $this->storage->storeChunk(
             sessionId: $dto->sessionId->value,
