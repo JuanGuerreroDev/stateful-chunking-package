@@ -9,4 +9,5 @@ interface FileStorageInterface
     public function storeChunk(string $sessionId, int $chunkIndex, string $content, string $chunkHash): string;
     public function reassembleFile(string $sessionId, string $fileName, int $totalChunks, string $expectedTotalHash): string;
     public function deleteTemporaryChunks(string $sessionId, int $totalChunks): void;
+    public function deleteChunk(string $sessionId, int $chunkIndex): void;
 }
