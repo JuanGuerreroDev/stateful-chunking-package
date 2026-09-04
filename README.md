@@ -4,14 +4,14 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/juanoecr/stateful-chunking.svg?style=flat-square)](https://packagist.org/packages/juanoecr/stateful-chunking)
 [![License](https://img.shields.io/packagist/l/juanoecr/stateful-chunking.svg?style=flat-square)](LICENSE)
 
-High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 12** built with **Hexagonal Architecture** and **SOLID principles**. Powered by a **Multi-Driver State Persistence** system (supporting Laravel Cache stores and Redis) for session tracking, state TTL management, and atomic byte reassembly.
+High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 12** built with **Hexagonal Architecture** and **SOLID principles**. Powered by a **Universal Cache State Persistence** system (supporting all Laravel Cache stores: Redis, Memcached, Database, File, DynamoDB, Array) for session tracking, state TTL management, and atomic byte reassembly.
 
 ---
 
 ## Features
 
 - **Decoupled Backend Package**: 100% pure Laravel backend package. Fits seamlessly into any existing API or microservice.
-- **Multi-Driver State Persistence**: Works out-of-the-box using Laravel 12's default cache system (`file`, `database`, `array`, `memcached`) or atomic `redis` driver.
+- **Universal Cache State Persistence**: Works out-of-the-box using any Laravel cache store (`redis`, `database`, `file`, `memcached`, `dynamodb`, `array`) with atomic locking support and automatic non-lock fallback.
 - **Dual-Layer Integrity Validation**: Validates individual chunk checksums and full assembled file integrity against SHA-256 hashes.
 - **Staged Upload Pattern & Cryptographic Tokens**: Returns AES-256 encrypted, HMAC-signed `upload_token`s upon completion. Protects against OWASP IDOR and Path Traversal with zero physical storage path exposure.
 - **Consumer DX Helpers & Validation Rule**: First-class `StatefulChunking` facade (`resolveToken`) and `ValidUploadToken` validation rule for clean, decoupled integration in downstream business modules.
@@ -46,11 +46,8 @@ This will create `config/stateful-chunking.php` in your application.
 Customize package parameters in `config/stateful-chunking.php` or via `.env`:
 
 ```env
-# Persistence Driver: 'cache' (default, uses Laravel Cache) or 'redis' (atomic Redis client)
-STATEFUL_CHUNKING_DRIVER=cache
-
-# Specific Cache Store (used when driver is 'cache'): default, file, database, redis, etc.
-STATEFUL_CHUNKING_CACHE_STORE=default
+# Specific Cache Store: leave empty to use Laravel's default cache store, or specify store (redis, database, file, etc.)
+STATEFUL_CHUNKING_CACHE_STORE=
 
 # Routes & Endpoint Configuration
 STATEFUL_CHUNKING_ROUTES_ENABLED=true
@@ -63,6 +60,14 @@ STATEFUL_CHUNKING_SESSION_TTL=21600
 # Storage Disk & Path
 STATEFUL_CHUNKING_STORAGE_DISK=local
 STATEFUL_CHUNKING_STORAGE_PATH=uploads
+
+# Rate Limiting & Throttling (Requests per minute per user/IP)
+STATEFUL_CHUNKING_RATE_LIMIT_ENABLED=true
+STATEFUL_CHUNKING_RATE_INITIATE=10
+STATEFUL_CHUNKING_RATE_UPLOAD=120
+STATEFUL_CHUNKING_RATE_STATUS=60
+STATEFUL_CHUNKING_RATE_COMPLETE=20
+STATEFUL_CHUNKING_RATE_CANCEL=20
 ```
 
 ---
@@ -90,15 +95,28 @@ Schedule::command('stateful-chunking:clear-stale')->hourly();
 
 ## API Endpoints Specification
 
-When `STATEFUL_CHUNKING_ROUTES_ENABLED` is true, the package automatically exposes 5 REST endpoints:
+When `STATEFUL_CHUNKING_ROUTES_ENABLED` is true, the package automatically exposes 5 REST endpoints protected by operation-specific rate limiters:
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/chunks/initiate` | Initiates a new chunk session or returns an active session by fingerprint |
-| `POST` | `/api/chunks/upload` | Receives and stores an individual chunk payload |
-| `GET` | `/api/chunks/status/{sessionId}` | Queries active chunk session status and pending chunk indices |
-| `POST` | `/api/chunks/complete` | Triggers stream reassembly, integrity hash validation, and session cleanup |
-| `DELETE` | `/api/chunks/cancel/{sessionId}` | Cancels an active session and purges state and temporary chunks |
+| Method | Endpoint | Description | Rate Limit (Default) |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/chunks/initiate` | Initiates a new chunk session or returns an active session by fingerprint | `10 req / min` |
+| `POST` | `/api/chunks/upload` | Receives and stores an individual chunk payload | `120 req / min` |
+| `GET` | `/api/chunks/status/{sessionId}` | Queries active chunk session status and pending chunk indices | `60 req / min` |
+| `POST` | `/api/chunks/complete` | Triggers stream reassembly, integrity hash validation, and session cleanup | `20 req / min` |
+| `DELETE` | `/api/chunks/cancel/{sessionId}` | Cancels an active session and purges state and temporary chunks | `20 req / min` |
+
+---
+
+## Rate Limiting & DoS Protection
+
+In accordance with **OWASP API Security (API4:2023 - Unrestricted Resource Consumption)**, this package registers dedicated, named rate limiters (`stateful-chunking-*`) in `StatefulChunkingServiceProvider` to protect against server resource starvation and abusive traffic:
+
+- **Identity Resolution**: Limits are partitioned per individual user using `$request->user()->id` for authenticated requests (e.g. via `auth:sanctum`), and falling back gracefully to `$request->ip()` for guest uploads. Users sharing a corporate NAT/proxy do not throttle each other when authenticated.
+- **Differentiated Quotas**: While uploading chunks allows high throughput (`120 req/min`, up to 2 chunks/sec), session creation (`10 req/min`) and byte reassembly (`20 req/min`) are strictly capped to prevent disk inode exhaustion and CPU/worker starvation during stream operations.
+- **HTTP 429 Handling**: If a client exceeds the threshold, Laravel returns a standard `HTTP 429 Too Many Requests` status with a `Retry-After` header.
+- **Disabling for Tests**: Set `STATEFUL_CHUNKING_RATE_LIMIT_ENABLED=false` in your `.env.testing` or `phpunit.xml` to bypass throttling during integration tests.
+
+For in-depth threat modeling and distributed cluster/multi-server cache configurations, consult the [Rate Limiting & DoS Prevention Guide](docs/security/rate_limiting_and_dos_prevention.md).
 
 ---
 
@@ -258,14 +276,40 @@ class MediaUploadController extends Controller
 
 ## Domain & Lifecycle Events
 
-The package dispatches standard Laravel events throughout the chunking and reassembly lifecycle. You can attach listeners or subscribers in your application (e.g. for asynchronous virus scanning, WebSocket progress, or metrics):
+The package dispatches standard Laravel events throughout the chunking and reassembly lifecycle. You can attach listeners or subscribers in your application (e.g. for asynchronous virus scanning, real-time WebSocket progress, or metrics):
 
-| Event | Namespace | Dispatched When |
-| :--- | :--- | :--- |
-| `ChunkSessionInitiated` | `StatefulChunking\...\Events\ChunkSessionInitiated` | A new upload session is created. |
-| `ChunkUploaded` | `StatefulChunking\...\Events\ChunkUploaded` | An individual chunk is verified and saved. |
-| `FileReassembled` | `StatefulChunking\...\Events\FileReassembled` | File bytes are assembled, hash verified, and token generated. |
-| `ChunkSessionCancelled` | `StatefulChunking\...\Events\ChunkSessionCancelled` | Session is cancelled and temporary storage is purged. |
+| Event | Full Namespace | Payload / Public Properties | Dispatched When |
+| :--- | :--- | :--- | :--- |
+| `ChunkSessionInitiated` | `Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionInitiated` | `$event->session` (`ChunkSession`) | A new upload session is created. |
+| `ChunkUploaded` | `Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkUploaded` | `$event->session`, `$event->chunkIndex`, `$event->chunkHash` | An individual chunk is verified and saved. |
+| `FileReassembled` | `Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled` | `$event->sessionId`, `$event->uploadToken`, `$event->filePath`, `$event->fileName`, `$event->fileSize`, `$event->hash`, `$event->reassemblyData` | File bytes are reassembled, hash verified, and token generated. |
+| `ChunkSessionCancelled` | `Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionCancelled` | `$event->sessionId` (`string`) | Session is cancelled and temporary storage is purged. |
+
+### Example: Asynchronous Post-Processing Listener
+
+```php
+namespace App\Listeners;
+
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Log;
+
+class ScanFileForViruses implements ShouldQueue
+{
+    public function handle(FileReassembled $event): void
+    {
+        Log::info("Asynchronously analyzing reassembled file: {$event->filePath}", [
+            'session_id'   => $event->sessionId,
+            'file_name'    => $event->fileName,
+            'file_size'    => $event->fileSize,
+            'sha256'       => $event->hash,
+            'upload_token' => $event->uploadToken,
+        ]);
+
+        // Non-destructive inspection (e.g., ClamAV scanner) while waiting for business form submission
+    }
+}
+```
 
 ---
 

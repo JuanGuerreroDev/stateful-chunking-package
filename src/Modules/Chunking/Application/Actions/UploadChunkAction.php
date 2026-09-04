@@ -36,7 +36,7 @@ final class UploadChunkAction
             chunkHash: $dto->chunkHash->value
         );
 
-        // Update state in Redis
+        // Update state in cache store
         $this->repository->updateChunkStatus(
             sessionId: $dto->sessionId->value,
             chunkIndex: $dto->chunkIndex,

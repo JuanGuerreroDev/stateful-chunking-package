@@ -13,7 +13,7 @@ test('ClearStaleSessionsCommand executes successfully', function () {
 });
 
 test('ClearStaleSessionsCommand clears specific session', function () {
-    config()->set('stateful-chunking.driver', 'array');
+    config()->set('stateful-chunking.cache_store', 'array');
     /** @var StateRepositoryInterface $repo */
     $repo = app(StateRepositoryInterface::class);
 
