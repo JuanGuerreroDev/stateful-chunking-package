@@ -75,6 +75,7 @@ return [
     'storage_disk' => env('STATEFUL_CHUNKING_STORAGE_DISK', 'local'),
     'storage_path' => env('STATEFUL_CHUNKING_STORAGE_PATH', 'uploads'),
     'expose_server_paths' => (bool) env('STATEFUL_CHUNKING_EXPOSE_SERVER_PATHS', false),
+    'require_auth' => (bool) env('STATEFUL_CHUNKING_REQUIRE_AUTH', false),
     'log_channel' => env('STATEFUL_CHUNKING_LOG_CHANNEL'),
 ];
 
