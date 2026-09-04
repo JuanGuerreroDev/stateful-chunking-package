@@ -57,7 +57,7 @@ final class LocalStorageAdapter implements FileStorageInterface
     ): string {
         $disk = Storage::disk($this->getDiskName());
         $sanitizedFileName = basename($fileName);
-        $finalRelativePath = sprintf('%s/%s', trim($this->getBaseStoragePath(), '/'), $sanitizedFileName);
+        $finalRelativePath = sprintf('%s/%s/%s', trim($this->getBaseStoragePath(), '/'), $sessionId, $sanitizedFileName);
 
         $tempFiles = [];
         for ($i = 0; $i < $totalChunks; $i++) {
