@@ -16,6 +16,7 @@ High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 
 - **Staged Upload Pattern & Cryptographic Tokens**: Returns AES-256 encrypted, HMAC-signed `upload_token`s upon completion. Protects against OWASP IDOR and Path Traversal with zero physical storage path exposure.
 - **Consumer DX Helpers & Validation Rule**: First-class `StatefulChunking` facade (`resolveToken`) and `ValidUploadToken` validation rule for clean, decoupled integration in downstream business modules.
 - **Configurable Storage**: Assembles files using Laravel's `Storage` facade (`local`, `s3`, `gcs`, etc.).
+- **Event-Driven Lifecycle**: Dispatches native Laravel events (`ChunkSessionInitiated`, `ChunkUploaded`, `FileReassembled`, `ChunkSessionCancelled`) for easy extension with virus scanners, WebSockets, and metrics.
 - **Garbage Collection (Stale Cleanup)**: Built-in Artisan command (`php artisan stateful-chunking:clear-stale`) for purging expired upload sessions and orphaned temporary files.
 - **Auto-Discovery & Zero Setup**: Auto-registers `StatefulChunkingServiceProvider` and REST API endpoints out-of-the-box.
 - **Customizable Routes**: Custom prefix, route middlewares (`auth:sanctum`, `api`), and config overrides.
@@ -252,6 +253,19 @@ class MediaUploadController extends Controller
     }
 }
 ```
+
+---
+
+## Domain & Lifecycle Events
+
+The package dispatches standard Laravel events throughout the chunking and reassembly lifecycle. You can attach listeners or subscribers in your application (e.g. for asynchronous virus scanning, WebSocket progress, or metrics):
+
+| Event | Namespace | Dispatched When |
+| :--- | :--- | :--- |
+| `ChunkSessionInitiated` | `StatefulChunking\...\Events\ChunkSessionInitiated` | A new upload session is created. |
+| `ChunkUploaded` | `StatefulChunking\...\Events\ChunkUploaded` | An individual chunk is verified and saved. |
+| `FileReassembled` | `StatefulChunking\...\Events\FileReassembled` | File bytes are assembled, hash verified, and token generated. |
+| `ChunkSessionCancelled` | `StatefulChunking\...\Events\ChunkSessionCancelled` | Session is cancelled and temporary storage is purged. |
 
 ---
 

@@ -43,6 +43,14 @@ final class UploadChunkAction
             status: 'completed'
         );
 
-        return $this->repository->getSession($dto->sessionId->value) ?? $session;
+        $updatedSession = $this->repository->getSession($dto->sessionId->value) ?? $session;
+
+        \StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkUploaded::dispatch(
+            $updatedSession,
+            $dto->chunkIndex,
+            $dto->chunkHash->value
+        );
+
+        return $updatedSession;
     }
 }

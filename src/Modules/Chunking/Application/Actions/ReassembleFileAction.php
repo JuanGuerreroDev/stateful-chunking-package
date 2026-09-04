@@ -48,7 +48,7 @@ final class ReassembleFileAction
 
         $this->repository->deleteSession($sessionId);
 
-        return [
+        $result = [
             'session_id' => $sessionId,
             'upload_token' => $uploadToken,
             'file_name' => $session->fileName,
@@ -58,5 +58,17 @@ final class ReassembleFileAction
             'computed_hash' => $session->totalHash->value,
             'verified' => true,
         ];
+
+        \StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\FileReassembled::dispatch(
+            sessionId: $sessionId,
+            uploadToken: $uploadToken,
+            filePath: $assembledPath,
+            fileName: $session->fileName,
+            fileSize: $session->fileSize,
+            hash: $session->totalHash->value,
+            reassemblyData: $result
+        );
+
+        return $result;
     }
 }
