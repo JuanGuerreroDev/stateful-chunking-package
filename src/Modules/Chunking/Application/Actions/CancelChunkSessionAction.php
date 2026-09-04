@@ -20,6 +20,7 @@ final class CancelChunkSessionAction
         if ($session) {
             $this->storage->deleteTemporaryChunks($sessionId, $session->totalChunks);
             $this->repository->deleteSession($sessionId);
+            \StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkSessionCancelled::dispatch($sessionId);
         }
     }
 }

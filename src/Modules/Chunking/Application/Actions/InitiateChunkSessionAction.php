@@ -8,6 +8,7 @@ use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
 use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
 use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
 use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
+use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
 
 final class InitiateChunkSessionAction
 {
@@ -35,6 +36,8 @@ final class InitiateChunkSessionAction
         );
 
         $this->repository->saveSession($session);
+
+        ChunkSessionInitiated::dispatch($session);
 
         return $session;
     }

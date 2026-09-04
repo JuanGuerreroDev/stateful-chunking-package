@@ -72,3 +72,34 @@ test('CacheStateRepository updates chunk status atomically and deletes session',
     $repo->deleteSession($session->sessionId->value);
     expect($repo->getSession($session->sessionId->value))->toBeNull();
 });
+
+test('CacheStateRepository falls back gracefully when cache store does not support atomic locks', function () {
+    config()->set('cache.default', 'file');
+    config()->set('stateful-chunking.cache_store', 'file');
+
+    /** @var CacheStateRepository $repo */
+    $repo = app(CacheStateRepository::class);
+
+    $session = new ChunkSession(
+        sessionId: SessionId::generate(),
+        fileName: 'file-driver-test.txt',
+        fileSize: 1024,
+        totalChunks: 2,
+        totalHash: ChunkHash::fromString('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'),
+        fingerprint: 'file-driver-fp',
+        status: SessionStatus::UPLOADING,
+        chunksMap: [0 => 'pending', 1 => 'pending']
+    );
+
+    $repo->saveSession($session);
+
+    // This would throw BadMethodCallException without the LockProvider fallback
+    $repo->updateChunkStatus($session->sessionId->value, 0, 'completed');
+
+    $updated = $repo->getSession($session->sessionId->value);
+    expect($updated)->not()->toBeNull();
+    expect($updated->chunksMap[0])->toBe('completed');
+
+    $repo->deleteSession($session->sessionId->value);
+});
+

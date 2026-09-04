@@ -65,10 +65,30 @@ final class LocalStorageAdapter implements FileStorageInterface
             if (!$disk->exists($chunkRelativePath)) {
                 throw new RuntimeException(sprintf('Missing chunk %d for reassembly.', $i));
             }
-            $tempFiles[] = $disk->path($chunkRelativePath);
+            try {
+                $tempFiles[] = $disk->path($chunkRelativePath);
+            } catch (\Throwable $e) {
+                throw new RuntimeException(
+                    sprintf(
+                        "Storage disk '%s' does not support local filesystem paths. The staging area requires a local disk driver (e.g. 'local'). For remote storage (S3/GCS), use the Staged Upload Pattern to stream the staged file to its permanent destination.",
+                        $this->getDiskName()
+                    ),
+                    previous: $e
+                );
+            }
         }
 
-        $fullAbsolutePath = $disk->path($finalRelativePath);
+        try {
+            $fullAbsolutePath = $disk->path($finalRelativePath);
+        } catch (\Throwable $e) {
+            throw new RuntimeException(
+                sprintf(
+                    "Storage disk '%s' does not support local filesystem paths. The staging area requires a local disk driver (e.g. 'local'). For remote storage (S3/GCS), use the Staged Upload Pattern to stream the staged file to its permanent destination.",
+                    $this->getDiskName()
+                ),
+                previous: $e
+            );
+        }
         $dirPath = dirname($fullAbsolutePath);
         if (!is_dir($dirPath)) {
             mkdir($dirPath, 0755, true);

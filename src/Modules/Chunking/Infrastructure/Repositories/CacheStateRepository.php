@@ -118,11 +118,9 @@ final class CacheStateRepository implements StateRepositoryInterface
 
     public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status): void
     {
-        /** @var \Illuminate\Cache\Repository&\Illuminate\Contracts\Cache\LockProvider $store */
         $store = Cache::store($this->getStoreName());
-        $lock = $store->lock($this->lockKey($sessionId), 10);
 
-        $lock->block(5, function () use ($sessionId, $chunkIndex, $status): void {
+        $mutate = function () use ($sessionId, $chunkIndex, $status): void {
             $session = $this->getSession($sessionId);
             if (!$session) {
                 return;
@@ -135,7 +133,15 @@ final class CacheStateRepository implements StateRepositoryInterface
             }
 
             $this->saveSession($session);
-        });
+        };
+
+        if ($store->getStore() instanceof \Illuminate\Contracts\Cache\LockProvider) {
+            /** @var \Illuminate\Cache\Repository&\Illuminate\Contracts\Cache\LockProvider $storeWithLock */
+            $storeWithLock = $store;
+            $storeWithLock->lock($this->lockKey($sessionId), 10)->block(5, $mutate);
+        } else {
+            $mutate();
+        }
     }
 
     public function deleteSession(string $sessionId): void
