@@ -17,6 +17,7 @@
         </include>
     </source>
     <php>
+        <env name="APP_KEY" value="base64:ykmnx42QZZwEkFiKmTXKKdoSMmJxQonk56uhSbWKYvU="/>
         <env name="APP_ENV" value="testing"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="CACHE_DRIVER" value="array"/>
