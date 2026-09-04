@@ -26,13 +26,19 @@ final class InitiateChunkSessionAction
             }
         }
 
+        $rawTtl = config('stateful-chunking.session_ttl', 21600);
+        $ttl = is_numeric($rawTtl) ? (int) $rawTtl : 21600;
+        $now = time();
+
         $session = new ChunkSession(
             sessionId: SessionId::generate(),
             fileName: $dto->fileName,
             fileSize: $dto->fileSize,
             totalChunks: $dto->totalChunks,
             totalHash: $dto->totalHash,
-            fingerprint: $dto->fingerprint
+            fingerprint: $dto->fingerprint,
+            createdAt: $now,
+            expiresAt: $now + $ttl
         );
 
         $this->repository->saveSession($session);

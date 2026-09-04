@@ -13,12 +13,6 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 
 final class CacheStateRepository implements StateRepositoryInterface
 {
-    private function getTtl(): int
-    {
-        $ttl = config('stateful-chunking.session_ttl', 21600);
-        return is_numeric($ttl) ? (int) $ttl : 21600;
-    }
-
     private function getStoreName(): ?string
     {
         $store = config('stateful-chunking.cache_store')
@@ -45,7 +39,7 @@ final class CacheStateRepository implements StateRepositoryInterface
     public function saveSession(ChunkSession $session): void
     {
         $store = Cache::store($this->getStoreName());
-        $ttl = $this->getTtl();
+        $ttl = max(1, $session->remainingTtl());
 
         $sessionData = [
             'session_id' => $session->sessionId->value,
@@ -56,7 +50,8 @@ final class CacheStateRepository implements StateRepositoryInterface
             'fingerprint' => $session->fingerprint,
             'status' => $session->status->value,
             'chunks_map' => $session->chunksMap,
-            'created_at' => time(),
+            'created_at' => $session->createdAt,
+            'expires_at' => $session->expiresAt,
         ];
 
         $store->put($this->sessionKey($session->sessionId->value), $sessionData, $ttl);
@@ -89,8 +84,10 @@ final class CacheStateRepository implements StateRepositoryInterface
         $rawTotalHash = isset($sessionData['total_hash']) && is_string($sessionData['total_hash']) ? $sessionData['total_hash'] : '';
         $rawFingerprint = isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) ? $sessionData['fingerprint'] : '';
         $rawStatus = isset($sessionData['status']) && (is_string($sessionData['status']) || is_int($sessionData['status'])) ? $sessionData['status'] : 'pending';
+        $rawCreatedAt = isset($sessionData['created_at']) && is_numeric($sessionData['created_at']) ? (int) $sessionData['created_at'] : 0;
+        $rawExpiresAt = isset($sessionData['expires_at']) && is_numeric($sessionData['expires_at']) ? (int) $sessionData['expires_at'] : 0;
 
-        return new ChunkSession(
+        $session = new ChunkSession(
             sessionId: SessionId::fromString($rawSessionId),
             fileName: $rawFileName,
             fileSize: $rawFileSize,
@@ -98,8 +95,17 @@ final class CacheStateRepository implements StateRepositoryInterface
             totalHash: ChunkHash::fromString($rawTotalHash),
             fingerprint: $rawFingerprint,
             status: SessionStatus::from($rawStatus),
-            chunksMap: $chunksMap
+            chunksMap: $chunksMap,
+            createdAt: $rawCreatedAt,
+            expiresAt: $rawExpiresAt
         );
+
+        if ($session->isExpired()) {
+            $this->deleteSession($sessionId);
+            return null;
+        }
+
+        return $session;
     }
 
     public function findSessionByFingerprint(string $fingerprint): ?ChunkSession
@@ -149,10 +155,10 @@ final class CacheStateRepository implements StateRepositoryInterface
     public function deleteSession(string $sessionId): void
     {
         $store = Cache::store($this->getStoreName());
-        $session = $this->getSession($sessionId);
+        $sessionData = $store->get($this->sessionKey($sessionId));
 
-        if ($session && !empty($session->fingerprint)) {
-            $store->forget($this->fingerprintKey($session->fingerprint));
+        if (is_array($sessionData) && isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) && !empty($sessionData['fingerprint'])) {
+            $store->forget($this->fingerprintKey($sessionData['fingerprint']));
         }
 
         $store->forget($this->sessionKey($sessionId));

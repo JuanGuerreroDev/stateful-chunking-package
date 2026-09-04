@@ -21,13 +21,19 @@ final class ChunkSession
         public readonly ChunkHash $totalHash,
         public readonly string $fingerprint,
         public SessionStatus $status = SessionStatus::PENDING,
-        public array $chunksMap = []
+        public array $chunksMap = [],
+        public int $createdAt = 0,
+        public int $expiresAt = 0
     ) {
         if (empty($this->chunksMap)) {
             for ($i = 0; $i < $totalChunks; $i++) {
                 $this->chunksMap[$i] = 'pending';
             }
         }
+
+        $now = time();
+        $this->createdAt = $this->createdAt > 0 ? $this->createdAt : $now;
+        $this->expiresAt = $this->expiresAt > 0 ? $this->expiresAt : ($this->createdAt + 21600);
     }
 
     public function markChunkCompleted(int $chunkIndex): void
@@ -69,6 +75,16 @@ final class ChunkSession
         return $pending;
     }
 
+    public function isExpired(): bool
+    {
+        return time() >= $this->expiresAt;
+    }
+
+    public function remainingTtl(): int
+    {
+        return max(0, $this->expiresAt - time());
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -84,6 +100,10 @@ final class ChunkSession
             'status' => $this->status->value,
             'chunks_map' => $this->chunksMap,
             'pending_chunks' => $this->getPendingChunkIndices(),
+            'created_at' => $this->createdAt,
+            'expires_at' => $this->expiresAt,
+            'is_expired' => $this->isExpired(),
+            'remaining_ttl' => $this->remainingTtl(),
         ];
     }
 }
