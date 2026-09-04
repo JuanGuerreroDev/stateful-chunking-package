@@ -151,7 +151,45 @@ final class CacheStateRepository implements StateRepositoryInterface
             $storeWithLock = $store;
             $storeWithLock->lock($this->lockKey($sessionId), 10)->block(5, $mutate);
         } else {
-            $mutate();
+            $this->executeWithFallbackFileLock($sessionId, $mutate);
+        }
+    }
+
+    private function getFallbackLockPath(string $sessionId): string
+    {
+        return sprintf('%s/chunk_lock_%s.lock', sys_get_temp_dir(), md5($sessionId));
+    }
+
+    private function executeWithFallbackFileLock(string $sessionId, callable $callback): void
+    {
+        $lockPath = $this->getFallbackLockPath($sessionId);
+        $fp = fopen($lockPath, 'c+');
+
+        if (!$fp) {
+            $callback();
+            return;
+        }
+
+        try {
+            $startTime = microtime(true);
+            $locked = false;
+
+            while ((microtime(true) - $startTime) < 5.0) {
+                if (flock($fp, LOCK_EX | LOCK_NB)) {
+                    $locked = true;
+                    break;
+                }
+                usleep(25000);
+            }
+
+            if (!$locked) {
+                flock($fp, LOCK_EX);
+            }
+
+            $callback();
+        } finally {
+            flock($fp, LOCK_UN);
+            fclose($fp);
         }
     }
 
@@ -165,5 +203,10 @@ final class CacheStateRepository implements StateRepositoryInterface
         }
 
         $store->forget($this->sessionKey($sessionId));
+
+        $lockPath = $this->getFallbackLockPath($sessionId);
+        if (file_exists($lockPath)) {
+            @unlink($lockPath);
+        }
     }
 }

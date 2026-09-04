@@ -40,9 +40,9 @@ final class ChunkUploadController extends Controller
     private function resolveCurrentOwnerId(Request $request): string
     {
         $user = $request->user();
-        if ($user && method_exists($user, 'getAuthIdentifier')) {
+        if ($user instanceof \Illuminate\Contracts\Auth\Authenticatable) {
             $authId = $user->getAuthIdentifier();
-            if ($authId !== null && $authId !== '') {
+            if ((is_string($authId) || is_int($authId)) && (string) $authId !== '') {
                 return 'user:' . (string) $authId;
             }
         }
