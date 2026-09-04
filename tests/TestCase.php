@@ -13,4 +13,9 @@ abstract class TestCase extends OrchestraTestCase
             StatefulChunkingServiceProvider::class,
         ];
     }
+
+    protected function getEnvironmentSetUp($app): void
+    {
+        $app['config']->set('app.key', 'base64:ykmnx42QZZwEkFiKmTXKKdoSMmJxQonk56uhSbWKYvU=');
+    }
 }
