@@ -36,7 +36,7 @@ final class LocalStorageAdapter implements FileStorageInterface
         $computedHash = hash('sha256', $content);
 
         if (strlen($chunkHash) >= 8 && strlen($chunkHash) === 64) {
-            if (strtolower($computedHash) !== strtolower($chunkHash)) {
+            if (!hash_equals(strtolower($chunkHash), strtolower($computedHash))) {
                 throw new RuntimeException(
                     sprintf('Chunk %d integrity check failed: SHA-256 hash mismatch.', $chunkIndex)
                 );
@@ -115,7 +115,7 @@ final class LocalStorageAdapter implements FileStorageInterface
         // Validate assembled file SHA-256 hash if expected hash is provided
         if (strlen($expectedTotalHash) === 64) {
             $assembledHash = hash_file('sha256', $fullAbsolutePath);
-            if (!is_string($assembledHash) || strtolower($assembledHash) !== strtolower($expectedTotalHash)) {
+            if (!is_string($assembledHash) || !hash_equals(strtolower($expectedTotalHash), strtolower($assembledHash))) {
                 @unlink($fullAbsolutePath);
                 throw new RuntimeException('Assembled file SHA-256 hash mismatch');
             }
