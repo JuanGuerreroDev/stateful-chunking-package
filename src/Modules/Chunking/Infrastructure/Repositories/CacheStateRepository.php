@@ -2,26 +2,22 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Repositories;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories;
 
 use Illuminate\Support\Facades\Cache;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 
 final class CacheStateRepository implements StateRepositoryInterface
 {
-    private function getTtl(): int
-    {
-        $ttl = config('stateful-chunking.redis_session_ttl', 21600);
-        return is_numeric($ttl) ? (int) $ttl : 21600;
-    }
-
     private function getStoreName(): ?string
     {
-        $store = config('stateful-chunking.cache_store') ?: config('cache.default');
+        $store = config('stateful-chunking.cache_store')
+            ?: config('stateful-chunking.driver')
+            ?: config('cache.default');
         return is_string($store) ? $store : null;
     }
 
@@ -43,7 +39,7 @@ final class CacheStateRepository implements StateRepositoryInterface
     public function saveSession(ChunkSession $session): void
     {
         $store = Cache::store($this->getStoreName());
-        $ttl = $this->getTtl();
+        $ttl = max(1, $session->remainingTtl());
 
         $sessionData = [
             'session_id' => $session->sessionId->value,
@@ -54,7 +50,9 @@ final class CacheStateRepository implements StateRepositoryInterface
             'fingerprint' => $session->fingerprint,
             'status' => $session->status->value,
             'chunks_map' => $session->chunksMap,
-            'created_at' => time(),
+            'created_at' => $session->createdAt,
+            'expires_at' => $session->expiresAt,
+            'owner_id' => $session->ownerId,
         ];
 
         $store->put($this->sessionKey($session->sessionId->value), $sessionData, $ttl);
@@ -87,8 +85,11 @@ final class CacheStateRepository implements StateRepositoryInterface
         $rawTotalHash = isset($sessionData['total_hash']) && is_string($sessionData['total_hash']) ? $sessionData['total_hash'] : '';
         $rawFingerprint = isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) ? $sessionData['fingerprint'] : '';
         $rawStatus = isset($sessionData['status']) && (is_string($sessionData['status']) || is_int($sessionData['status'])) ? $sessionData['status'] : 'pending';
+        $rawCreatedAt = isset($sessionData['created_at']) && is_numeric($sessionData['created_at']) ? (int) $sessionData['created_at'] : 0;
+        $rawExpiresAt = isset($sessionData['expires_at']) && is_numeric($sessionData['expires_at']) ? (int) $sessionData['expires_at'] : 0;
+        $rawOwnerId = isset($sessionData['owner_id']) && is_string($sessionData['owner_id']) ? $sessionData['owner_id'] : null;
 
-        return new ChunkSession(
+        $session = new ChunkSession(
             sessionId: SessionId::fromString($rawSessionId),
             fileName: $rawFileName,
             fileSize: $rawFileSize,
@@ -96,8 +97,18 @@ final class CacheStateRepository implements StateRepositoryInterface
             totalHash: ChunkHash::fromString($rawTotalHash),
             fingerprint: $rawFingerprint,
             status: SessionStatus::from($rawStatus),
-            chunksMap: $chunksMap
+            chunksMap: $chunksMap,
+            createdAt: $rawCreatedAt,
+            expiresAt: $rawExpiresAt,
+            ownerId: $rawOwnerId
         );
+
+        if ($session->isExpired()) {
+            $this->deleteSession($sessionId);
+            return null;
+        }
+
+        return $session;
     }
 
     public function findSessionByFingerprint(string $fingerprint): ?ChunkSession
@@ -118,11 +129,9 @@ final class CacheStateRepository implements StateRepositoryInterface
 
     public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status): void
     {
-        /** @var \Illuminate\Cache\Repository&\Illuminate\Contracts\Cache\LockProvider $store */
         $store = Cache::store($this->getStoreName());
-        $lock = $store->lock($this->lockKey($sessionId), 10);
 
-        $lock->block(5, function () use ($sessionId, $chunkIndex, $status): void {
+        $mutate = function () use ($sessionId, $chunkIndex, $status): void {
             $session = $this->getSession($sessionId);
             if (!$session) {
                 return;
@@ -135,18 +144,69 @@ final class CacheStateRepository implements StateRepositoryInterface
             }
 
             $this->saveSession($session);
-        });
+        };
+
+        if ($store->getStore() instanceof \Illuminate\Contracts\Cache\LockProvider) {
+            /** @var \Illuminate\Cache\Repository&\Illuminate\Contracts\Cache\LockProvider $storeWithLock */
+            $storeWithLock = $store;
+            $storeWithLock->lock($this->lockKey($sessionId), 10)->block(5, $mutate);
+        } else {
+            $this->executeWithFallbackFileLock($sessionId, $mutate);
+        }
+    }
+
+    private function getFallbackLockPath(string $sessionId): string
+    {
+        return sprintf('%s/chunk_lock_%s.lock', sys_get_temp_dir(), md5($sessionId));
+    }
+
+    private function executeWithFallbackFileLock(string $sessionId, callable $callback): void
+    {
+        $lockPath = $this->getFallbackLockPath($sessionId);
+        $fp = fopen($lockPath, 'c+');
+
+        if (!$fp) {
+            $callback();
+            return;
+        }
+
+        try {
+            $startTime = microtime(true);
+            $locked = false;
+
+            while ((microtime(true) - $startTime) < 5.0) {
+                if (flock($fp, LOCK_EX | LOCK_NB)) {
+                    $locked = true;
+                    break;
+                }
+                usleep(25000);
+            }
+
+            if (!$locked) {
+                flock($fp, LOCK_EX);
+            }
+
+            $callback();
+        } finally {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+        }
     }
 
     public function deleteSession(string $sessionId): void
     {
         $store = Cache::store($this->getStoreName());
-        $session = $this->getSession($sessionId);
+        $sessionData = $store->get($this->sessionKey($sessionId));
 
-        if ($session && !empty($session->fingerprint)) {
-            $store->forget($this->fingerprintKey($session->fingerprint));
+        if (is_array($sessionData) && isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) && !empty($sessionData['fingerprint'])) {
+            $store->forget($this->fingerprintKey($sessionData['fingerprint']));
         }
 
         $store->forget($this->sessionKey($sessionId));
+
+        $lockPath = $this->getFallbackLockPath($sessionId);
+        if (file_exists($lockPath)) {
+            @unlink($lockPath);
+        }
     }
 }

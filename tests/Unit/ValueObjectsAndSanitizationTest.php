@@ -1,11 +1,11 @@
 <?php
 
-namespace StatefulChunking\LaravelPackage\Tests\Unit;
+namespace Juanoecr\StatefulChunking\Tests\Unit;
 
 use InvalidArgumentException;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Tests\TestCase;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Tests\TestCase;
 
 class ValueObjectsAndSanitizationTest extends TestCase
 {

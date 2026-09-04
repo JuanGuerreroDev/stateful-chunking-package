@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs;
 
 use Illuminate\Support\Facades\Storage;
 

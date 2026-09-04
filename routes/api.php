@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Http\Controllers\ChunkUploadController;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Controllers\ChunkUploadController;
 
 $prefix = config('stateful-chunking.routes.prefix', 'api/chunks');
 $middleware = config('stateful-chunking.routes.middleware', ['api']);

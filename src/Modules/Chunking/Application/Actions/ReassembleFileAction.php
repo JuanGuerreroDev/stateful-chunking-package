@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
 
-use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use RuntimeException;
 
 final class ReassembleFileAction
@@ -48,7 +48,7 @@ final class ReassembleFileAction
 
         $this->repository->deleteSession($sessionId);
 
-        return [
+        $result = [
             'session_id' => $sessionId,
             'upload_token' => $uploadToken,
             'file_name' => $session->fileName,
@@ -58,5 +58,17 @@ final class ReassembleFileAction
             'computed_hash' => $session->totalHash->value,
             'verified' => true,
         ];
+
+        \Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled::dispatch(
+            sessionId: $sessionId,
+            uploadToken: $uploadToken,
+            filePath: $assembledPath,
+            fileName: $session->fileName,
+            fileSize: $session->fileSize,
+            hash: $session->totalHash->value,
+            reassemblyData: $result
+        );
+
+        return $result;
     }
 }

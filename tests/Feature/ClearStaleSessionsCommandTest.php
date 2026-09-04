@@ -1,10 +1,10 @@
 <?php
 
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Enums\SessionStatus;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 
 test('ClearStaleSessionsCommand executes successfully', function () {
     $this->artisan('stateful-chunking:clear-stale')
@@ -13,7 +13,7 @@ test('ClearStaleSessionsCommand executes successfully', function () {
 });
 
 test('ClearStaleSessionsCommand clears specific session', function () {
-    config()->set('stateful-chunking.driver', 'array');
+    config()->set('stateful-chunking.cache_store', 'array');
     /** @var StateRepositoryInterface $repo */
     $repo = app(StateRepositoryInterface::class);
 

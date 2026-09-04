@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
 
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
 
 final class InitiateChunkSessionAction
 {
@@ -17,13 +18,17 @@ final class InitiateChunkSessionAction
 
     public function handle(InitiateSessionDTO $dto): ChunkSession
     {
-        // Reuse session if fingerprint matches
+        // Reuse session if fingerprint matches and belongs to the same owner
         if (!empty($dto->fingerprint)) {
             $existing = $this->repository->findSessionByFingerprint($dto->fingerprint);
-            if ($existing) {
+            if ($existing && ($existing->ownerId === null || $existing->ownerId === $dto->ownerId)) {
                 return $existing;
             }
         }
+
+        $rawTtl = config('stateful-chunking.session_ttl', 21600);
+        $ttl = is_numeric($rawTtl) ? (int) $rawTtl : 21600;
+        $now = time();
 
         $session = new ChunkSession(
             sessionId: SessionId::generate(),
@@ -31,10 +36,15 @@ final class InitiateChunkSessionAction
             fileSize: $dto->fileSize,
             totalChunks: $dto->totalChunks,
             totalHash: $dto->totalHash,
-            fingerprint: $dto->fingerprint
+            fingerprint: $dto->fingerprint,
+            createdAt: $now,
+            expiresAt: $now + $ttl,
+            ownerId: $dto->ownerId
         );
 
         $this->repository->saveSession($session);
+
+        ChunkSessionInitiated::dispatch($session);
 
         return $session;
     }
