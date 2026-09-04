@@ -82,8 +82,8 @@ class E2EPackageIntegrationTest extends TestCase
         $this->assertEquals('e2e_verified_document.txt', $stagedFile->fileName);
         $this->assertEquals($totalHash, $stagedFile->hash);
 
-        // Verify assembled file content on storage
-        $storedPath = $reassembleData['relative_path'];
+        // Verify assembled file content on storage via resolved staged file
+        $storedPath = $stagedFile->tempPath;
         Storage::disk('local')->assertExists($storedPath);
         $assembledContent = Storage::disk('local')->get($storedPath);
         $this->assertEquals($fullContent, $assembledContent);

@@ -215,9 +215,14 @@ final class ChunkUploadController extends Controller
                 'ip' => $request->ip(),
             ]);
 
+            $responseData = $result;
+            if (!config('stateful-chunking.expose_server_paths', false)) {
+                unset($responseData['path'], $responseData['relative_path']);
+            }
+
             return response()->json([
                 'message' => 'File reassembled successfully',
-                'data' => $result,
+                'data' => $responseData,
             ], 200);
         } catch (Exception $e) {
             $this->logger()->error('File reassembly failed', [

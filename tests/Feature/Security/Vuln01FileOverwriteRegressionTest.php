@@ -56,7 +56,8 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
             'session_id' => $sessionIdUserA,
         ]);
         $completeUserA->assertStatus(200);
-        $pathUserA = (string) $completeUserA->json('data.relative_path');
+        $tokenUserA = (string) $completeUserA->json('data.upload_token');
+        $pathUserA = app(\Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class)->resolveToken($tokenUserA)->tempPath;
 
         // ═══════════════════════════════════════════════════════════════
         // USER B: Uploads critical_contract.pdf (Identical filename)
@@ -88,7 +89,8 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
             'session_id' => $sessionIdUserB,
         ]);
         $completeUserB->assertStatus(200);
-        $pathUserB = (string) $completeUserB->json('data.relative_path');
+        $tokenUserB = (string) $completeUserB->json('data.upload_token');
+        $pathUserB = app(\Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class)->resolveToken($tokenUserB)->tempPath;
 
         // ═══════════════════════════════════════════════════════════════
         // REGRESSION ASSERTIONS (DEFENSE VERIFICATION)
@@ -167,7 +169,8 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
             'session_id' => $sessionId,
         ]);
         $complete->assertStatus(200);
-        $finalPath = (string) $complete->json('data.relative_path');
+        $completeToken = (string) $complete->json('data.upload_token');
+        $finalPath = app(\Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class)->resolveToken($completeToken)->tempPath;
 
         // Path must strictly start with the base storage path + session namespace
         $expectedPrefix = 'uploads/' . $sessionId . '/';
