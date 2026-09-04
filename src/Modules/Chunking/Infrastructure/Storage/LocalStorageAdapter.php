@@ -105,9 +105,15 @@ final class LocalStorageAdapter implements FileStorageInterface
                 if (!$srcStream) {
                     throw new RuntimeException(sprintf('Failed to open chunk stream for file: %s', $chunkFile));
                 }
-                stream_copy_to_stream($srcStream, $destStream);
-                fclose($srcStream);
+                try {
+                    stream_copy_to_stream($srcStream, $destStream);
+                } finally {
+                    fclose($srcStream);
+                }
             }
+        } catch (\Throwable $e) {
+            @unlink($fullAbsolutePath);
+            throw $e;
         } finally {
             fclose($destStream);
         }
@@ -131,5 +137,14 @@ final class LocalStorageAdapter implements FileStorageInterface
         $disk = Storage::disk($this->getDiskName());
         $tempDir = sprintf('chunks_temp/%s', $sessionId);
         $disk->deleteDirectory($tempDir);
+    }
+
+    public function deleteChunk(string $sessionId, int $chunkIndex): void
+    {
+        $disk = Storage::disk($this->getDiskName());
+        $path = $this->chunkPath($sessionId, $chunkIndex);
+        if ($disk->exists($path)) {
+            $disk->delete($path);
+        }
     }
 }

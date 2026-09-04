@@ -48,12 +48,22 @@ final class UploadChunkAction
             chunkHash: $dto->chunkHash->value
         );
 
-        // Update state in cache store
-        $this->repository->updateChunkStatus(
-            sessionId: $dto->sessionId->value,
-            chunkIndex: $dto->chunkIndex,
-            status: 'completed'
-        );
+        try {
+            // Update state in cache store
+            $this->repository->updateChunkStatus(
+                sessionId: $dto->sessionId->value,
+                chunkIndex: $dto->chunkIndex,
+                status: 'completed'
+            );
+        } catch (\Throwable $e) {
+            // Rollback: clean up written chunk file so it doesn't stay orphaned on disk
+            $this->storage->deleteChunk(
+                sessionId: $dto->sessionId->value,
+                chunkIndex: $dto->chunkIndex
+            );
+
+            throw $e;
+        }
 
         $updatedSession = $this->repository->getSession($dto->sessionId->value) ?? $session;
 
