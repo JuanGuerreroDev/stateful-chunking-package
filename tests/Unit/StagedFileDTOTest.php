@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\StagedFileDTO;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO;
 use Illuminate\Support\Facades\Storage;
 
 test('StagedFileDTO instantiates correctly and validates validity and expiration', function () {

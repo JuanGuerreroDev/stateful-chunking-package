@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Console\Commands;
+namespace Juanoecr\StatefulChunking\Console\Commands;
 
 use Illuminate\Console\Command;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
 
 final class ClearStaleSessionsCommand extends Command
 {

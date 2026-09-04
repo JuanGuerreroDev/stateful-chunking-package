@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities;
 
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 
 final class ChunkSession
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
 
-use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 
 final class CancelChunkSessionAction
 {
@@ -20,7 +20,7 @@ final class CancelChunkSessionAction
         if ($session) {
             $this->storage->deleteTemporaryChunks($sessionId, $session->totalChunks);
             $this->repository->deleteSession($sessionId);
-            \StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkSessionCancelled::dispatch($sessionId);
+            \Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionCancelled::dispatch($sessionId);
         }
     }
 }

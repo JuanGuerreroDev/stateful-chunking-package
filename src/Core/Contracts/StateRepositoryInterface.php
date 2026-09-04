@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Core\Contracts;
+namespace Juanoecr\StatefulChunking\Core\Contracts;
 
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 
 interface StateRepositoryInterface
 {

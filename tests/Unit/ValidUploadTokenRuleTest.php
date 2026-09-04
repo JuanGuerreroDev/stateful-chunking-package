@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use StatefulChunking\LaravelPackage\Rules\ValidUploadToken;
-use StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunking\Rules\ValidUploadToken;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use Illuminate\Support\Facades\Validator;
 
 test('ValidUploadToken rule passes for a valid unexpired upload token', function () {

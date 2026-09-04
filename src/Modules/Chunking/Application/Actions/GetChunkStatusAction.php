@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
 
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use RuntimeException;
 
 final class GetChunkStatusAction

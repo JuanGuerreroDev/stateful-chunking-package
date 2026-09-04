@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Storage;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage;
 
 use Illuminate\Support\Facades\Storage;
-use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use RuntimeException;
 
 final class LocalStorageAdapter implements FileStorageInterface

@@ -1,9 +1,9 @@
 <?php
 
-namespace StatefulChunking\LaravelPackage\Tests\Feature;
+namespace Juanoecr\StatefulChunking\Tests\Feature;
 
 use Illuminate\Support\Facades\Storage;
-use StatefulChunking\LaravelPackage\Tests\TestCase;
+use Juanoecr\StatefulChunking\Tests\TestCase;
 
 class CancelAndStatusEndpointTest extends TestCase
 {

@@ -1,10 +1,10 @@
 <?php
 
-namespace StatefulChunking\LaravelPackage\Tests\Feature;
+namespace Juanoecr\StatefulChunking\Tests\Feature;
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
-use StatefulChunking\LaravelPackage\Tests\TestCase;
+use Juanoecr\StatefulChunking\Tests\TestCase;
 
 class RateLimitingAndMiddlewareTest extends TestCase
 {

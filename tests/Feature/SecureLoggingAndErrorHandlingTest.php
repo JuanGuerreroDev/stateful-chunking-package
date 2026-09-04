@@ -1,10 +1,10 @@
 <?php
 
-namespace StatefulChunking\LaravelPackage\Tests\Feature;
+namespace Juanoecr\StatefulChunking\Tests\Feature;
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
-use StatefulChunking\LaravelPackage\Tests\TestCase;
+use Juanoecr\StatefulChunking\Tests\TestCase;
 
 class SecureLoggingAndErrorHandlingTest extends TestCase
 {

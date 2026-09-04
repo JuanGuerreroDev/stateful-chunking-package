@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Http\Requests;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 

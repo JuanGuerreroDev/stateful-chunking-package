@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs;
 
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 
 final class UploadChunkDTO
 {

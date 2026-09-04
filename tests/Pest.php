@@ -1,5 +1,5 @@
 <?php
 
-use StatefulChunking\LaravelPackage\Tests\TestCase;
+use Juanoecr\StatefulChunking\Tests\TestCase;
 
 uses(TestCase::class)->in(__DIR__);

@@ -1,8 +1,8 @@
 <?php
 
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkSize;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkSize;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 
 test('Package ChunkSize validates multiples of 256 KB', function () {
     $size = new ChunkSize(2097152); // 2 MB

@@ -1,11 +1,11 @@
 <?php
 
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\SessionId;
-use StatefulChunking\LaravelPackage\Core\ValueObjects\ChunkHash;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Enums\SessionStatus;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 
 test('ServiceProvider resolves unified CacheStateRepository for all state drivers', function () {
     config()->set('stateful-chunking.driver', 'array');

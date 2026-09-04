@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Core\Contracts;
+namespace Juanoecr\StatefulChunking\Core\Contracts;
 
 interface FileStorageInterface
 {
