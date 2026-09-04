@@ -74,6 +74,7 @@ return [
     'driver' => env('STATEFUL_CHUNKING_DRIVER'),
     'storage_disk' => env('STATEFUL_CHUNKING_STORAGE_DISK', 'local'),
     'storage_path' => env('STATEFUL_CHUNKING_STORAGE_PATH', 'uploads'),
+    'expose_server_paths' => (bool) env('STATEFUL_CHUNKING_EXPOSE_SERVER_PATHS', false),
     'log_channel' => env('STATEFUL_CHUNKING_LOG_CHANNEL'),
 ];
 
