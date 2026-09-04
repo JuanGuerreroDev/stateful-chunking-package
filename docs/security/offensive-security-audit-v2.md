@@ -643,6 +643,26 @@ None of these are exploitable for unauthorized access or remote code execution. 
 
 ---
 
+## 10. Advanced Threat Modeling & Future Investigations (Plus)
+
+This section documents advanced attack vectors and future investigative work identified during the audit, categorized for deeper offensive exploration and analytical review.
+
+### Profundización Ofensiva (Pruebas con Código)
+
+*   **Tests adversariales reales**: Escribir tests de Pest que ataquen los hallazgos VULN-SEC-001 a 007 con payloads reales. Ejemplos: enviar un chunk de 50MB en el body sin multipart para confirmar el *memory spike*, o pasar un hash de 32 caracteres directamente a `storeChunk()` para demostrar el bypass.
+*   **Tests de concurrencia simulada**: Crear una Prueba de Concepto (PoC) para VULN-SEC-002 simulando el patrón *read-modify-write* con dos procesos usando el driver de caché `file` para demostrar el *lost update* en la práctica.
+*   **Fuzzing automatizado**: Escribir tests que generen inputs aleatorios (strings largos, caracteres unicode, null bytes, encoding doble, enteros negativos/overflow) contra los 5 endpoints para verificar que nunca se produzcan *crashes* ni excepciones no manejadas.
+*   **MIME type vs extension gap**: Investigar la falta de validación del contenido real del archivo frente a su extensión. Evaluar si un archivo `malware.jpg` con código PHP interno sería aceptado y sus implicaciones de seguridad.
+
+### Profundización Analítica (Análisis Teórico y Estático)
+
+*   **ReDoS en expresiones regulares**: Analizar en profundidad si alguna de las regex utilizadas (como `file_name`, `session_id`, `chunk_hash`) es susceptible a ataques de *catastrophic backtracking* mediante inputs maliciosos crafteados.
+*   **Integer overflow en cálculos**: Auditar los límites aritméticos en el cálculo `total_chunks * chunk_size_bytes` para determinar si podría ocurrir un *integer overflow* en sistemas de 32-bit.
+*   **Manipulación avanzada del Token**: Evaluar la robustez del `upload_token` cifrado contra ataques criptográficos como *bit-flipping*, *padding oracle*, y ataques de repetición (*replay attacks*) para validar la implementación de `Crypt::encryptString` de Laravel en este contexto.
+*   **Cache key injection cross-driver**: Evaluar el comportamiento del sistema ante claves de caché malformadas inyectadas en drivers específicos como Memcached (que tiene un límite de 250 caracteres), DynamoDB y el driver Database.
+
+---
+
 ## Completion Checklist
 
 - [x] Threat modeling
