@@ -107,3 +107,31 @@ test('CacheStateRepository falls back gracefully when cache store does not suppo
     $repo->deleteSession($session->sessionId->value);
 });
 
+test('CacheStateRepository automatically purges expired session and returns null', function () {
+    /** @var CacheStateRepository $repo */
+    $repo = app(CacheStateRepository::class);
+
+    $expiredSession = new ChunkSession(
+        sessionId: SessionId::generate(),
+        fileName: 'expired-session.txt',
+        fileSize: 2048,
+        totalChunks: 2,
+        totalHash: ChunkHash::fromString('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'),
+        fingerprint: 'expired-fp-test',
+        status: SessionStatus::UPLOADING,
+        createdAt: time() - 3600,
+        expiresAt: time() - 10
+    );
+
+    $repo->saveSession($expiredSession);
+
+    // Retrieve should detect expiration, purge cache keys, and return null
+    $retrieved = $repo->getSession($expiredSession->sessionId->value);
+    expect($retrieved)->toBeNull();
+
+    // Fingerprint search should also return null
+    $byFp = $repo->findSessionByFingerprint('expired-fp-test');
+    expect($byFp)->toBeNull();
+});
+
+
