@@ -31,12 +31,12 @@ final class InitiateChunkRequest extends FormRequest
             'htaccess', 'htpasswd', 'user.ini',
         ]);
         $forbiddenExts = is_array($rawForbiddenExts)
-            ? array_map('strtolower', array_map('trim', $rawForbiddenExts))
+            ? array_map(fn (mixed $ext): string => strtolower(trim(is_string($ext) ? $ext : '')), $rawForbiddenExts)
             : ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'];
 
         $rawAllowedExts = config('stateful-chunking.allowed_extensions');
         $allowedExts = is_array($rawAllowedExts) && count($rawAllowedExts) > 0
-            ? array_map('strtolower', array_map('trim', $rawAllowedExts))
+            ? array_map(fn (mixed $ext): string => strtolower(trim(is_string($ext) ? $ext : '')), $rawAllowedExts)
             : null;
 
         return [
