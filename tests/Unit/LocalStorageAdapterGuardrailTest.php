@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Storage;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
 
 test('LocalStorageAdapter stores chunk and validates checksum correctly', function () {
     Storage::fake('local');

@@ -1,8 +1,8 @@
 # Stateful Chunking Package for Laravel
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/stateful-chunking/laravel-package.svg?style=flat-square)](https://packagist.org/packages/stateful-chunking/laravel-package)
-[![Total Downloads](https://img.shields.io/packagist/dt/stateful-chunking/laravel-package.svg?style=flat-square)](https://packagist.org/packages/stateful-chunking/laravel-package)
-[![License](https://img.shields.io/packagist/l/stateful-chunking/laravel-package.svg?style=flat-square)](LICENSE)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/juanoecr/stateful-chunking.svg?style=flat-square)](https://packagist.org/packages/juanoecr/stateful-chunking)
+[![Total Downloads](https://img.shields.io/packagist/dt/juanoecr/stateful-chunking.svg?style=flat-square)](https://packagist.org/packages/juanoecr/stateful-chunking)
+[![License](https://img.shields.io/packagist/l/juanoecr/stateful-chunking.svg?style=flat-square)](LICENSE)
 
 High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 12** built with **Hexagonal Architecture** and **SOLID principles**. Powered by a **Multi-Driver State Persistence** system (supporting Laravel Cache stores and Redis) for session tracking, state TTL management, and atomic byte reassembly.
 
@@ -28,7 +28,7 @@ High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 
 Install the package via Composer:
 
 ```bash
-composer require stateful-chunking/laravel-package
+composer require juanoecr/stateful-chunking
 ```
 
 Publish the configuration file:
@@ -183,7 +183,7 @@ Validate incoming business requests using the built-in validation rule:
 namespace App\Modules\Multimedia\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use StatefulChunking\LaravelPackage\Rules\ValidUploadToken;
+use Juanoecr\StatefulChunking\Rules\ValidUploadToken;
 
 class StoreMediaRequest extends FormRequest
 {
@@ -207,7 +207,7 @@ namespace App\Modules\Multimedia\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Multimedia\Http\Requests\StoreMediaRequest;
-use StatefulChunking\LaravelPackage\Facades\StatefulChunking;
+use Juanoecr\StatefulChunking\Facades\StatefulChunking;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\Media;

@@ -1,6 +1,6 @@
 {
-    "name": "stateful-chunking/laravel-package",
-    "description": "Resilient Stateful Chunking backend package for Laravel powered by Redis state tracking and SHA-256 checksum verification.",
+    "name": "juanoecr/stateful-chunking",
+    "description": "High-performance Stateful Chunking package for Laravel featuring multi-driver state persistence, secure staged upload tokens, and SHA-256 verification.",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -21,18 +21,18 @@
     },
     "autoload": {
         "psr-4": {
-            "StatefulChunking\\LaravelPackage\\": "src/"
+            "Juanoecr\\StatefulChunking\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "StatefulChunking\\LaravelPackage\\Tests\\": "tests/"
+            "Juanoecr\\StatefulChunking\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "StatefulChunking\\LaravelPackage\\Providers\\StatefulChunkingServiceProvider"
+                "Juanoecr\\StatefulChunking\\Providers\\StatefulChunkingServiceProvider"
             ]
         }
     },

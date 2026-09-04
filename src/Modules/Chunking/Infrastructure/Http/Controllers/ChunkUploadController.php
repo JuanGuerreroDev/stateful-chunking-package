@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Http\Controllers;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Controllers;
 
 use Illuminate\Routing\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions\UploadChunkAction;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions\GetChunkStatusAction;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions\ReassembleFileAction;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\UploadChunkDTO;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\UploadChunkAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\GetChunkStatusAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\ReassembleFileAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\UploadChunkDTO;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
 use Exception;
 
 final class ChunkUploadController extends Controller

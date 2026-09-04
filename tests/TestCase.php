@@ -1,9 +1,9 @@
 <?php
 
-namespace StatefulChunking\LaravelPackage\Tests;
+namespace Juanoecr\StatefulChunking\Tests;
 
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
-use StatefulChunking\LaravelPackage\Providers\StatefulChunkingServiceProvider;
+use Juanoecr\StatefulChunking\Providers\StatefulChunkingServiceProvider;
 
 abstract class TestCase extends OrchestraTestCase
 {

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService;
-use StatefulChunking\LaravelPackage\Facades\StatefulChunking;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunking\Facades\StatefulChunking;
 
 test('StatefulChunkingService generates and resolves valid upload token', function () {
     $service = new StatefulChunkingService();

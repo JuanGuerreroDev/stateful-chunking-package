@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
 
-use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\UploadChunkDTO;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\UploadChunkDTO;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use RuntimeException;
 
 final class UploadChunkAction
@@ -45,7 +45,7 @@ final class UploadChunkAction
 
         $updatedSession = $this->repository->getSession($dto->sessionId->value) ?? $session;
 
-        \StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkUploaded::dispatch(
+        \Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkUploaded::dispatch(
             $updatedSession,
             $dto->chunkIndex,
             $dto->chunkHash->value

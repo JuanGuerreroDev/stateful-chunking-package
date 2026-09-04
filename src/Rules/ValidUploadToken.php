@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Rules;
+namespace Juanoecr\StatefulChunking\Rules;
 
 use Illuminate\Contracts\Validation\ValidationRule;
-use StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use Closure;
 
 final class ValidUploadToken implements ValidationRule

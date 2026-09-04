@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Core\Services;
+namespace Juanoecr\StatefulChunking\Core\Services;
 
 use Illuminate\Support\Facades\Crypt;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\StagedFileDTO;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO;
 use Throwable;
 
 final class StatefulChunkingService

@@ -1,10 +1,10 @@
 <?php
 
-namespace StatefulChunking\LaravelPackage\Tests\Feature;
+namespace Juanoecr\StatefulChunking\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use StatefulChunking\LaravelPackage\Tests\TestCase;
+use Juanoecr\StatefulChunking\Tests\TestCase;
 
 class E2EPackageIntegrationTest extends TestCase
 {
@@ -76,7 +76,7 @@ class E2EPackageIntegrationTest extends TestCase
         $this->assertNotEmpty($reassembleData['upload_token']);
 
         // Verify that the upload token can be resolved by consumer facade
-        $stagedFile = \StatefulChunking\LaravelPackage\Facades\StatefulChunking::resolveToken($reassembleData['upload_token']);
+        $stagedFile = \Juanoecr\StatefulChunking\Facades\StatefulChunking::resolveToken($reassembleData['upload_token']);
         $this->assertTrue($stagedFile->isValid());
         $this->assertEquals($sessionId, $stagedFile->sessionId);
         $this->assertEquals('e2e_verified_document.txt', $stagedFile->fileName);

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Tests\Feature;
+namespace Juanoecr\StatefulChunking\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkSessionCancelled;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\ChunkUploaded;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Events\FileReassembled;
-use StatefulChunking\LaravelPackage\Tests\TestCase;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionCancelled;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkUploaded;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled;
+use Juanoecr\StatefulChunking\Tests\TestCase;
 
 final class DomainEventsDispatchTest extends TestCase
 {
