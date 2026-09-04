@@ -49,7 +49,13 @@ return [
     'chunk_size_bytes' => (int) env('STATEFUL_CHUNKING_SIZE_BYTES', 2097152),
     'max_file_size_bytes' => (int) env('STATEFUL_CHUNKING_MAX_FILE_SIZE_BYTES', 10737418240), // 10 GB
     'max_total_chunks' => (int) env('STATEFUL_CHUNKING_MAX_TOTAL_CHUNKS', 10000),
-    'forbidden_extensions' => ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'],
+    'forbidden_extensions' => [
+        'php', 'phar', 'phtml', 'pht', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'inc', 'hphp', 'ctp',
+        'sh', 'bash', 'zsh', 'exe', 'bat', 'cmd', 'com', 'cgi', 'pl', 'py', 'rb', 'vbs', 'vbe', 'ps1',
+        'asp', 'aspx', 'cer', 'asa', 'asax', 'cfm', 'cfc', 'jsp', 'jspx', 'shtml', 'shtm',
+        'htaccess', 'htpasswd', 'user.ini',
+    ],
+    'allowed_extensions' => null,
     'session_ttl' => (int) env('STATEFUL_CHUNKING_SESSION_TTL', 21600),
     'max_chunk_retries' => (int) env('STATEFUL_CHUNKING_MAX_RETRIES', 3),
 

@@ -24,8 +24,20 @@ final class InitiateChunkRequest extends FormRequest
         $rawMaxChunks = config('stateful-chunking.max_total_chunks', 10000);
         $maxChunks = is_numeric($rawMaxChunks) ? (int) $rawMaxChunks : 10000;
 
-        $rawForbiddenExts = config('stateful-chunking.forbidden_extensions', ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl']);
-        $forbiddenExts = is_array($rawForbiddenExts) ? $rawForbiddenExts : ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'];
+        $rawForbiddenExts = config('stateful-chunking.forbidden_extensions', [
+            'php', 'phar', 'phtml', 'pht', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'inc', 'hphp', 'ctp',
+            'sh', 'bash', 'zsh', 'exe', 'bat', 'cmd', 'com', 'cgi', 'pl', 'py', 'rb', 'vbs', 'vbe', 'ps1',
+            'asp', 'aspx', 'cer', 'asa', 'asax', 'cfm', 'cfc', 'jsp', 'jspx', 'shtml', 'shtm',
+            'htaccess', 'htpasswd', 'user.ini',
+        ]);
+        $forbiddenExts = is_array($rawForbiddenExts)
+            ? array_map('strtolower', array_map('trim', $rawForbiddenExts))
+            : ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'];
+
+        $rawAllowedExts = config('stateful-chunking.allowed_extensions');
+        $allowedExts = is_array($rawAllowedExts) && count($rawAllowedExts) > 0
+            ? array_map('strtolower', array_map('trim', $rawAllowedExts))
+            : null;
 
         return [
             'file_name' => [
@@ -33,10 +45,47 @@ final class InitiateChunkRequest extends FormRequest
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z0-9._-]+$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($forbiddenExts): void {
-                    $ext = strtolower(pathinfo(is_string($value) ? $value : '', PATHINFO_EXTENSION));
-                    if (in_array($ext, $forbiddenExts, true)) {
-                        $fail("The file extension .{$ext} is forbidden for uploads.");
+                function (string $attribute, mixed $value, \Closure $fail) use ($forbiddenExts, $allowedExts): void {
+                    $strValue = is_string($value) ? $value : '';
+
+                    // 1. Block dot-files (e.g., .htaccess, .env)
+                    if (str_starts_with($strValue, '.')) {
+                        $fail('Filenames starting with a dot are forbidden.');
+                        return;
+                    }
+
+                    // 2. Block trailing dots or spaces (Windows normalization bypass)
+                    if (str_ends_with($strValue, '.') || str_ends_with($strValue, ' ')) {
+                        $fail('Filenames with trailing dots or spaces are forbidden.');
+                        return;
+                    }
+
+                    $segments = explode('.', $strValue);
+
+                    // 3. Must contain at least one dot separating name and extension
+                    if (count($segments) < 2 || end($segments) === '') {
+                        $fail('The filename must contain a valid extension.');
+                        return;
+                    }
+
+                    $finalExtension = strtolower((string) end($segments));
+
+                    // 4. Enforce whitelist if configured
+                    if ($allowedExts !== null) {
+                        if (!in_array($finalExtension, $allowedExts, true)) {
+                            $fail("The file extension .{$finalExtension} is not allowed.");
+                            return;
+                        }
+                    }
+
+                    // 5. Multi-segment inspection (double extension prevention)
+                    // Check every segment after the root stem against forbidden extensions
+                    foreach (array_slice($segments, 1) as $segment) {
+                        $cleanSegment = strtolower(trim($segment));
+                        if (in_array($cleanSegment, $forbiddenExts, true)) {
+                            $fail("The file extension or component .{$cleanSegment} is forbidden for uploads.");
+                            return;
+                        }
                     }
                 },
             ],
