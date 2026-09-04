@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
 
-use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Application\DTOs\UploadChunkDTO;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\UploadChunkDTO;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use RuntimeException;
 
 final class UploadChunkAction
@@ -28,6 +28,18 @@ final class UploadChunkAction
             throw new RuntimeException(sprintf('Chunk index %d out of bounds.', $dto->chunkIndex));
         }
 
+        // Idempotency: if chunk is already marked completed, validate integrity and return existing session
+        if (($session->chunksMap[$dto->chunkIndex] ?? null) === 'completed') {
+            $computedHash = hash('sha256', $dto->content);
+            if (!hash_equals(strtolower($dto->chunkHash->value), strtolower($computedHash))) {
+                throw new RuntimeException(
+                    sprintf('Chunk %d integrity check failed: SHA-256 hash mismatch.', $dto->chunkIndex)
+                );
+            }
+
+            return $session;
+        }
+
         // Store chunk payload & validate chunk SHA-256
         $this->storage->storeChunk(
             sessionId: $dto->sessionId->value,
@@ -36,13 +48,31 @@ final class UploadChunkAction
             chunkHash: $dto->chunkHash->value
         );
 
-        // Update state in Redis
-        $this->repository->updateChunkStatus(
-            sessionId: $dto->sessionId->value,
-            chunkIndex: $dto->chunkIndex,
-            status: 'completed'
+        try {
+            // Update state in cache store
+            $this->repository->updateChunkStatus(
+                sessionId: $dto->sessionId->value,
+                chunkIndex: $dto->chunkIndex,
+                status: 'completed'
+            );
+        } catch (\Throwable $e) {
+            // Rollback: clean up written chunk file so it doesn't stay orphaned on disk
+            $this->storage->deleteChunk(
+                sessionId: $dto->sessionId->value,
+                chunkIndex: $dto->chunkIndex
+            );
+
+            throw $e;
+        }
+
+        $updatedSession = $this->repository->getSession($dto->sessionId->value) ?? $session;
+
+        \Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkUploaded::dispatch(
+            $updatedSession,
+            $dto->chunkIndex,
+            $dto->chunkHash->value
         );
 
-        return $this->repository->getSession($dto->sessionId->value) ?? $session;
+        return $updatedSession;
     }
 }

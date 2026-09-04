@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Core\ValueObjects;
+namespace Juanoecr\StatefulChunking\Core\ValueObjects;
 
 use Illuminate\Support\Str;
 use InvalidArgumentException;

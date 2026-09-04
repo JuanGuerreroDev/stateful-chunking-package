@@ -2,14 +2,19 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Http\Requests;
+namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class InitiateChunkRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if (config('stateful-chunking.require_auth', false)) {
+            return $this->user() instanceof Authenticatable;
+        }
+
         return true;
     }
 
@@ -24,8 +29,20 @@ final class InitiateChunkRequest extends FormRequest
         $rawMaxChunks = config('stateful-chunking.max_total_chunks', 10000);
         $maxChunks = is_numeric($rawMaxChunks) ? (int) $rawMaxChunks : 10000;
 
-        $rawForbiddenExts = config('stateful-chunking.forbidden_extensions', ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl']);
-        $forbiddenExts = is_array($rawForbiddenExts) ? $rawForbiddenExts : ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'];
+        $rawForbiddenExts = config('stateful-chunking.forbidden_extensions', [
+            'php', 'phar', 'phtml', 'pht', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'inc', 'hphp', 'ctp',
+            'sh', 'bash', 'zsh', 'exe', 'bat', 'cmd', 'com', 'cgi', 'pl', 'py', 'rb', 'vbs', 'vbe', 'ps1',
+            'asp', 'aspx', 'cer', 'asa', 'asax', 'cfm', 'cfc', 'jsp', 'jspx', 'shtml', 'shtm',
+            'htaccess', 'htpasswd', 'user.ini',
+        ]);
+        $forbiddenExts = is_array($rawForbiddenExts)
+            ? array_map(fn (mixed $ext): string => strtolower(trim(is_string($ext) ? $ext : '')), $rawForbiddenExts)
+            : ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'];
+
+        $rawAllowedExts = config('stateful-chunking.allowed_extensions');
+        $allowedExts = is_array($rawAllowedExts) && count($rawAllowedExts) > 0
+            ? array_map(fn (mixed $ext): string => strtolower(trim(is_string($ext) ? $ext : '')), $rawAllowedExts)
+            : null;
 
         return [
             'file_name' => [
@@ -33,15 +50,65 @@ final class InitiateChunkRequest extends FormRequest
                 'string',
                 'max:255',
                 'regex:/^[a-zA-Z0-9._-]+$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($forbiddenExts): void {
-                    $ext = strtolower(pathinfo(is_string($value) ? $value : '', PATHINFO_EXTENSION));
-                    if (in_array($ext, $forbiddenExts, true)) {
-                        $fail("The file extension .{$ext} is forbidden for uploads.");
+                function (string $attribute, mixed $value, \Closure $fail) use ($forbiddenExts, $allowedExts): void {
+                    $strValue = is_string($value) ? $value : '';
+
+                    // 1. Block dot-files (e.g., .htaccess, .env)
+                    if (str_starts_with($strValue, '.')) {
+                        $fail('Filenames starting with a dot are forbidden.');
+                        return;
+                    }
+
+                    // 2. Block trailing dots or spaces (Windows normalization bypass)
+                    if (str_ends_with($strValue, '.') || str_ends_with($strValue, ' ')) {
+                        $fail('Filenames with trailing dots or spaces are forbidden.');
+                        return;
+                    }
+
+                    $segments = explode('.', $strValue);
+
+                    // 3. Must contain at least one dot separating name and extension
+                    if (count($segments) < 2 || end($segments) === '') {
+                        $fail('The filename must contain a valid extension.');
+                        return;
+                    }
+
+                    $finalExtension = strtolower((string) end($segments));
+
+                    // 4. Enforce whitelist if configured
+                    if ($allowedExts !== null) {
+                        if (!in_array($finalExtension, $allowedExts, true)) {
+                            $fail("The file extension .{$finalExtension} is not allowed.");
+                            return;
+                        }
+                    }
+
+                    // 5. Multi-segment inspection (double extension prevention)
+                    // Check every segment after the root stem against forbidden extensions
+                    foreach (array_slice($segments, 1) as $segment) {
+                        $cleanSegment = strtolower(trim($segment));
+                        if (in_array($cleanSegment, $forbiddenExts, true)) {
+                            $fail("The file extension or component .{$cleanSegment} is forbidden for uploads.");
+                            return;
+                        }
                     }
                 },
             ],
             'file_size' => ['required', 'integer', 'min:1', 'max:' . $maxFileSize],
-            'total_chunks' => ['required', 'integer', 'min:1', 'max:' . $maxChunks],
+            'total_chunks' => [
+                'required',
+                'integer',
+                'min:' . (function () {
+                    $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+                    $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
+                    $fileSizeInput = $this->input('file_size');
+                    if (is_numeric($fileSizeInput) && (int) $fileSizeInput > 0) {
+                        return max(1, (int) ceil((int) $fileSizeInput / $chunkSizeBytes));
+                    }
+                    return 1;
+                })(),
+                'max:' . $maxChunks,
+            ],
             'total_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/i'],
             'fingerprint' => ['nullable', 'string', 'max:255'],
         ];

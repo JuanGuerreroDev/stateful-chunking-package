@@ -1,8 +1,8 @@
 # Enterprise Security, Obfuscation, and Code Protection Guide
 
-**Package**: `stateful-chunking/laravel-package`  
+**Package**: `juanoecr/stateful-chunking`  
 **Target Audience**: Systems Architects, Security Engineers, and Enterprise Package Integrators  
-**Document Revision**: 1.0.0  
+**Document Revision**: 1.1.0  
 **Classification**: Technical Reference / Best Practices Guide  
 
 ---
@@ -19,24 +19,25 @@
    - [4.2 Runtime Loader Requirements](#42-runtime-loader-requirements)
 5. [Runtime & Storage Layer Hardening](#5-runtime--storage-layer-hardening)
    - [5.1 Storage Disk Isolation & Non-Executable Upload Directories](#51-storage-disk-isolation--non-executable-upload-directories)
-   - [5.2 Redis Storage ACLs & Encryption in Transit](#52-redis-storage-acls--encryption-in-transit)
+   - [5.2 Centralized Cache Storage Hardening (Locks, Fallbacks & ACLs)](#52-centralized-cache-storage-hardening-locks-fallbacks--acls)
    - [5.3 PHP Interpreter Security Directives](#53-php-interpreter-security-directives)
+   - [5.4 Cryptographic Keys & Staged Upload Token Security](#54-cryptographic-keys--staged-upload-token-security)
 6. [Verification, Performance Impact, and Troubleshooting](#6-verification-performance-impact-and-troubleshooting)
 
 ---
 
 ## 1. Executive Summary & Threat Model
 
-The `stateful-chunking/laravel-package` provides stateful binary chunk reassembly and state persistence for Laravel applications. When deployed in proprietary enterprise environments or distributed commercial products, protecting intellectual property (IP) and ensuring the integrity of the underlying chunking algorithms are primary technical objectives.
+The `juanoecr/stateful-chunking` package provides stateful binary chunk reassembly and state persistence for Laravel applications. When deployed in proprietary enterprise environments or distributed commercial products, protecting intellectual property (IP) and ensuring the integrity of the underlying chunking algorithms are primary technical objectives.
 
 ### Threat Matrix & Mitigation Summary
 
 | Threat Vector | Description | Primary Vulnerability Area | Technical Mitigation |
 | :--- | :--- | :--- | :--- |
 | **Reverse Engineering** | Decompilation of PHP source code to inspect chunk reassembly and hash verification logic. | Distribution of uncompiled `.php` source files. | Bytecode compilation via IonCube Encoder / Zend Guard. |
-| **Dependency Collision** | Symbol overlap or version mismatches when integrating into third-party enterprise Laravel apps. | Global namespace declaration (`StatefulChunking\LaravelPackage`). | Namespace prefixing and isolation via PHP-Scoper. |
+| **Dependency Collision** | Symbol overlap or version mismatches when integrating into third-party enterprise Laravel apps. | Global namespace declaration (`Juanoecr\StatefulChunking`). | Namespace prefixing and isolation via PHP-Scoper. |
 | **Arbitrary Code Execution** | Upload of malicious executable scripts (e.g., `.php`, `.phar`, `.sh`) via file chunk endpoints. | Upload directory execution permissions and mime validation. | FormRequest extension blacklist, Web Server non-exec flags, and randomized temporary pathing. |
-| **State Tampering / Race Conditions** | Interception or concurrent alteration of session state maps during active multi-part transfers. | Unprotected Redis / Cache state store keys. | Atomic session locking (`Cache::lock()`) and Redis ACL restricted key prefixes (`chunk_session:*`). |
+| **State Tampering / Race Conditions** | Interception or concurrent alteration of session state maps during active multi-part transfers. | Unprotected centralized Cache state store keys. | Atomic session locking (`Cache::lock()`) with defensive fallback for non-lock stores and restricted key prefixes (`chunk_session:*`). |
 
 ---
 
@@ -105,8 +106,8 @@ return [
             // Preserve ServiceProvider class name resolution for Laravel Package Auto-Discovery
             if (str_ends_with($filePath, 'src/Providers/StatefulChunkingServiceProvider.php')) {
                 return str_replace(
-                    'namespace '.$prefix.'\\StatefulChunking\\LaravelPackage\\Providers;',
-                    'namespace StatefulChunking\\LaravelPackage\\Providers;',
+                    'namespace '.$prefix.'\\Juanoecr\\StatefulChunking\\Providers;',
+                    'namespace Juanoecr\\StatefulChunking\\Providers;',
                     $content
                 );
             }
@@ -231,9 +232,23 @@ location ^~ /storage/uploads/ {
 </Directory>
 ```
 
-### 5.2 Redis Storage ACLs & Encryption in Transit
+### 5.2 Centralized Cache Storage Hardening (Locks, Fallbacks & ACLs)
 
-When using Redis as the backing store for `CacheStateRepository`, configure dedicated Redis ACL users with permissions limited strictly to the package's key prefix (`chunk_session:*` and `chunk_session_lock:*`).
+The package persists session metadata using Laravel's unified `Cache` facade across any configured driver. When using remote centralized storage backends (e.g., Redis clusters), configure dedicated ACL users with permissions limited strictly to the package's key prefix (`chunk_session:*`, `chunk_session_lock:*`, and `chunk_fingerprint:*`).
+
+#### Defensive Fallback for Non-Redis Cache Stores
+When using cache stores that do not implement Laravel's `LockProvider` contract (such as `file`, `database`, or `array`), `CacheStateRepository` gracefully falls back to executing state mutations directly without throwing fatal errors:
+
+```php
+// CacheStateRepository automatically handles drivers without atomic locks
+$store = $cache->getStore();
+if ($store instanceof \Illuminate\Contracts\Cache\LockProvider) {
+    $lock = $cache->lock("chunk_session_lock:{$sessionId}", 10);
+    $lock->block(5, $callback);
+} else {
+    $callback(); // Safe direct execution fallback
+}
+```
 
 #### Redis ACL User Definition (`redis.conf` / `users.acl`):
 
@@ -273,6 +288,12 @@ opcache.enable_cli = 0
 opcache.restrict_api = /var/www/html
 ```
 
+### 5.4 Cryptographic Keys & Staged Upload Token Security
+
+The package's Staged Upload pattern emits an encrypted `upload_token` upon file reassembly, preventing IDOR and Path Traversal:
+- The token payload is encrypted and signed using Laravel's native `Crypt::encryptString()` (AES-256-CBC with HMAC).
+- **Host Application Security**: The security of `upload_token` relies strictly on the host application's `APP_KEY`. In multi-server or clustered architectures, ensure all web instances share the identical `APP_KEY`. Never log, leak, or expose decrypted tokens in frontend responses.
+
 ---
 
 ## 6. Verification, Performance Impact, and Troubleshooting
@@ -294,4 +315,4 @@ Code compiled via IonCube Encoder combined with PHP OPcache incurs zero runtime 
    - *Remediation*: Ensure `zend_extension` path in `php.ini` points to the exact SAPI version matching your CLI and FPM PHP processes.
 2. **Reflection Exceptions in Third-Party Frameworks**:
    - *Symptom*: `ReflectionException: Property does not exist` during DTO or Action hydration.
-   - *Remediation*: Verify that `--encode-reflection` is omitted or configured with exemption rules for public DTO classes (`InitiateSessionDTO`, `UploadChunkDTO`).
+   - *Remediation*: Verify that `--encode-reflection` is omitted or configured with exemption rules for public DTO classes (`InitiateSessionDTO`, `UploadChunkDTO`, and `StagedFileDTO`).

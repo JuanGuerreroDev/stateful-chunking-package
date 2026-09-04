@@ -1,9 +1,9 @@
 <?php
 
-namespace StatefulChunking\LaravelPackage\Tests;
+namespace Juanoecr\StatefulChunking\Tests;
 
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
-use StatefulChunking\LaravelPackage\Providers\StatefulChunkingServiceProvider;
+use Juanoecr\StatefulChunking\Providers\StatefulChunkingServiceProvider;
 
 abstract class TestCase extends OrchestraTestCase
 {
@@ -12,5 +12,10 @@ abstract class TestCase extends OrchestraTestCase
         return [
             StatefulChunkingServiceProvider::class,
         ];
+    }
+
+    protected function getEnvironmentSetUp($app): void
+    {
+        $app['config']->set('app.key', 'base64:ykmnx42QZZwEkFiKmTXKKdoSMmJxQonk56uhSbWKYvU=');
     }
 }

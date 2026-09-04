@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace StatefulChunking\LaravelPackage\Providers;
+namespace Juanoecr\StatefulChunking\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use StatefulChunking\LaravelPackage\Core\Contracts\StateRepositoryInterface;
-use StatefulChunking\LaravelPackage\Core\Contracts\FileStorageInterface;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
-use StatefulChunking\LaravelPackage\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
-use StatefulChunking\LaravelPackage\Console\Commands\ClearStaleSessionsCommand;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
+use Juanoecr\StatefulChunking\Console\Commands\ClearStaleSessionsCommand;
 
 final class StatefulChunkingServiceProvider extends ServiceProvider
 {
@@ -27,11 +27,11 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
         $this->app->bind(FileStorageInterface::class, LocalStorageAdapter::class);
 
         $this->app->singleton(
-            \StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService::class,
-            fn () => new \StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService()
+            \Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class,
+            fn () => new \Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService()
         );
         $this->app->alias(
-            \StatefulChunking\LaravelPackage\Core\Services\StatefulChunkingService::class,
+            \Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class,
             'stateful-chunking.service'
         );
     }
