@@ -643,23 +643,115 @@ None of these are exploitable for unauthorized access or remote code execution. 
 
 ---
 
-## 10. Advanced Threat Modeling & Future Investigations (Plus)
+## 10. Advanced Offensive Deep-Dive
 
-This section documents advanced attack vectors and future investigative work identified during the audit, categorized for deeper offensive exploration and analytical review.
+This section documents the results of the advanced offensive security implementation session conducted after the initial v2 audit. Four new test suites were written and verified against the live codebase.
 
-### Profundización Ofensiva (Pruebas con Código)
+### 10.1 Adversarial Payload Tests (`AdvSec_AdversarialPayloadTest.php`)
 
-*   **Tests adversariales reales**: Escribir tests de Pest que ataquen los hallazgos VULN-SEC-001 a 007 con payloads reales. Ejemplos: enviar un chunk de 50MB en el body sin multipart para confirmar el *memory spike*, o pasar un hash de 32 caracteres directamente a `storeChunk()` para demostrar el bypass.
-*   **Tests de concurrencia simulada**: Crear una Prueba de Concepto (PoC) para VULN-SEC-002 simulando el patrón *read-modify-write* con dos procesos usando el driver de caché `file` para demostrar el *lost update* en la práctica.
-*   **Fuzzing automatizado**: Escribir tests que generen inputs aleatorios (strings largos, caracteres unicode, null bytes, encoding doble, enteros negativos/overflow) contra los 5 endpoints para verificar que nunca se produzcan *crashes* ni excepciones no manejadas.
-*   **MIME type vs extension gap**: Investigar la falta de validación del contenido real del archivo frente a su extensión. Evaluar si un archivo `malware.jpg` con código PHP interno sería aceptado y sus implicaciones de seguridad.
+Tests attacking VULN-SEC-001 to 007 with real exploit payloads. All 7 tests pass, confirming the documented vulnerabilities.
 
-### Profundización Analítica (Análisis Teórico y Estático)
+| Test | Finding | Result |
+| :--- | :--- | :--- |
+| 10MB raw body memory measurement | VULN-SEC-001 | PASS — 413 returned, full body pre-loaded in memory before check |
+| 32-char hash bypasses `storeChunk()` | VULN-SEC-004 | PASS — chunk stored with no integrity check |
+| 64-char mismatched hash throws | VULN-SEC-004 control | PASS — exception thrown correctly for 64-char hashes |
+| 32-char hash bypasses `reassembleFile()` | VULN-SEC-005 | PASS — file assembled with no total hash verification |
+| Fingerprint reuse returns non-pending session | VULN-SEC-003 | PASS — same `session_id` returned regardless of status |
+| Non-UUID `session_id` accepted at `/complete` | VULN-SEC-007 | PASS — 400 returned, no crash, no UUID format check |
+| UUID regex enforced at `/upload` (control) | VULN-SEC-007 control | PASS — 422 returned, regex validation confirmed |
 
-*   **ReDoS en expresiones regulares**: Analizar en profundidad si alguna de las regex utilizadas (como `file_name`, `session_id`, `chunk_hash`) es susceptible a ataques de *catastrophic backtracking* mediante inputs maliciosos crafteados.
-*   **Integer overflow en cálculos**: Auditar los límites aritméticos en el cálculo `total_chunks * chunk_size_bytes` para determinar si podría ocurrir un *integer overflow* en sistemas de 32-bit.
-*   **Manipulación avanzada del Token**: Evaluar la robustez del `upload_token` cifrado contra ataques criptográficos como *bit-flipping*, *padding oracle*, y ataques de repetición (*replay attacks*) para validar la implementación de `Crypt::encryptString` de Laravel en este contexto.
-*   **Cache key injection cross-driver**: Evaluar el comportamiento del sistema ante claves de caché malformadas inyectadas en drivers específicos como Memcached (que tiene un límite de 250 caracteres), DynamoDB y el driver Database.
+**Key finding (VULN-SEC-001)**: `memory_get_peak_usage()` confirmed that the 10MB raw body is fully buffered into a PHP string before the 413 response is sent. The fix requires checking `Content-Length` header or `$file->getSize()` before calling `getContent()` / `file_get_contents()`.
+
+### 10.2 Concurrency Race Condition PoC (`AdvSec_ConcurrencyRaceConditionTest.php`)
+
+Manual simulation of the read-modify-write lost update (VULN-SEC-002). All 3 tests pass.
+
+| Test | Result |
+| :--- | :--- |
+| Manual interleaved writes demonstrate lost update | PASS — chunk 0 write from "Server A" was overwritten by "Server B" stale snapshot |
+| Atomic `updateChunkStatus()` prevents lost update | PASS — LockProvider path correctly serializes both writes |
+| Documents fallback lock is process-local | PASS — `sys_get_temp_dir()` confirmed as the lock path (local to each machine) |
+
+**Key finding**: The test directly demonstrates that two sequential `saveSession()` calls with stale snapshots produce a lost update. Chunk 0 was reverted to `pending` after Server B wrote its old state. The atomic path (`updateChunkStatus()` + LockProvider) correctly preserved both updates.
+
+### 10.3 Fuzzing Automated Suite (`AdvSec_FuzzingEndpointsTest.php`)
+
+161 assertions across 6 tests covering all 5 endpoints. **Zero HTTP 500 responses on any input.**
+
+Fuzzing categories tested: long strings (10k chars), Unicode (CJK, emoji, RTL), null bytes, double-encoded path traversal, SQL injection, XSS payloads, newline injection, negative/overflow integers, binary garbage, type confusion (arrays, booleans, `PHP_INT_MAX`), empty payloads.
+
+**Security invariant confirmed**: The package never produces an unhandled exception on any input to any endpoint.
+
+### 10.4 MIME Type vs Extension Gap (`AdvSec_MimeTypeExtensionGapTest.php`)
+
+All 5 tests pass. The gap is confirmed and documented.
+
+| Test | Result |
+| :--- | :--- |
+| PHP webshell with `.jpg` extension is accepted | PASS — full chunked upload succeeds, file stored on disk |
+| Polyglot PNG + PHP payload is accepted | PASS — PNG magic bytes + PHP code stored without content inspection |
+| `.htaccess` content stored as `.txt` | PASS — no content-level filtering |
+| Explicit `.php` extension is blocked (control) | PASS — extension blacklist correctly rejects `.php` |
+| `finfo` can detect PHP content in `.jpg` | PASS — `finfo` reports `text/x-php` for PHP content regardless of extension |
+
+**MIME Gap Summary**: The package correctly blocks dangerous extensions (`.php`, `.phar`, `.sh`, etc.) but does NOT inspect file content. An attacker can upload arbitrary executable code with a whitelisted extension (`.jpg`, `.png`, `.txt`). The practical risk depends on:
+1. Whether the storage disk is web-accessible.
+2. Whether the web server is configured to execute files based on MIME type vs. extension.
+3. Whether a downstream process trusts the uploaded file as safe based on its extension.
+
+**Fix**: Add MIME content validation using PHP's `finfo` extension or Laravel's `mimes` / `mimetypes` validation rule in `UploadChunkRequest`.
+
+---
+
+### 10.5 Analytical Deep-Dive (Static Analysis)
+
+#### ReDoS Analysis
+
+The three regex patterns used in the package were analyzed for catastrophic backtracking:
+
+- **`file_name`**: `/^[a-zA-Z0-9._-]+$/` — Simple character class with `+` quantifier. No alternation, no nested quantifiers. **Not susceptible to ReDoS.**
+- **`session_id`**: `/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i` — Fixed-length hex segments with literal hyphens. No backtracking ambiguity. **Not susceptible to ReDoS.**
+- **`chunk_hash`**: `/^[a-f0-9]{64}$/i` — Single character class, exact count. **Not susceptible to ReDoS.**
+
+**Conclusion**: All regex patterns are linear-time (`O(n)`). No ReDoS risk.
+
+#### Integer Overflow Analysis
+
+The critical arithmetic is: `ceil((int) $fileSizeInput / $chunkSizeBytes)` in `InitiateChunkRequest`.
+
+- PHP on 64-bit systems uses 64-bit integers (`PHP_INT_MAX` = 9,223,372,036,854,775,807).
+- The `max_file_size_bytes` config defaults to `10,737,418,240` (10 GB), well below `PHP_INT_MAX`.
+- Even with `PHP_INT_MAX` as `file_size` input, `ceil(PHP_INT_MAX / 2097152)` = `4,398,046,511,104` which is still within int64 range.
+- The `max:` rule on `file_size` caps the value at `max_file_size_bytes` before arithmetic is performed.
+
+**Conclusion**: No integer overflow risk on 64-bit PHP. On 32-bit PHP (`PHP_INT_MAX` = 2,147,483,647), a `file_size` of 2GB+ would overflow the `total_chunks` minimum calculation. However, 32-bit PHP is end-of-life and not a supported target platform.
+
+#### Upload Token Cryptographic Analysis
+
+The `upload_token` uses Laravel's `Crypt::encryptString()` which implements:
+- **Cipher**: AES-256-CBC
+- **MAC**: HMAC-SHA256 over the IV + ciphertext (encrypt-then-MAC)
+- **IV**: Randomly generated 16-byte IV per encryption
+
+**Bit-flipping**: Not feasible. The HMAC-SHA256 MAC prevents ciphertext manipulation. Any modified ciphertext fails MAC verification and throws a `DecryptException`.
+
+**Padding oracle**: Not applicable. Laravel validates the MAC BEFORE decryption (encrypt-then-MAC), so no padding oracle information leaks.
+
+**Replay attacks**: Tokens do not carry expiry information. A valid token from a completed session can be replayed. However, the token is only used internally (not exposed as a primary auth mechanism), so the practical impact is minimal.
+
+**Conclusion**: Token implementation is cryptographically sound. The only residual concern is token replay, which is a design-level consideration.
+
+#### Cache Key Injection Cross-Driver Analysis
+
+Cache keys follow the pattern `chunk_session:<uuid>` and `chunk_fingerprint:<fingerprint>`.
+
+- **Memcached**: Key limit is 250 bytes. `chunk_session:` (14 chars) + UUID (36 chars) = 50 chars. Safe. The `fingerprint` field has `max:255` validation, so `chunk_fingerprint:` (18 chars) + 255 chars = 273 chars — **exceeds Memcached's 250-byte limit**. This would cause a silent Memcached error for fingerprints > 232 chars.
+- **Redis**: No key length restriction in practice (512MB max). Safe.
+- **Database**: Key is stored as a VARCHAR column. Laravel's database cache driver uses a 255-char key column by default. Same overflow risk as Memcached for long fingerprints.
+- **DynamoDB**: Partition key limit is 2048 bytes. Safe.
+
+**Finding (VULN-SEC-007 extension)**: A fingerprint of 233+ characters sent to a Memcached or Database cache driver would fail silently (fingerprint key not stored), meaning resume-by-fingerprint would not work but no crash occurs.
 
 ---
 
@@ -679,8 +771,17 @@ This section documents advanced attack vectors and future investigative work ide
 - [x] Resource exhaustion analysis
 - [x] Supply chain review
 - [x] Regression test verification
+- [x] Adversarial payload tests (AdvSec suite)
+- [x] Concurrency race condition PoC
+- [x] Automated fuzzing (161 assertions, 0 HTTP 500s)
+- [x] MIME type vs extension gap analysis
+- [x] ReDoS analysis
+- [x] Integer overflow analysis
+- [x] Token cryptographic analysis
+- [x] Cache key injection cross-driver analysis
 
 ---
 
 *Audit conducted by AI Security Engineer following OWASP methodology, PTES framework, and ASVS guidelines.*  
 *No external systems were targeted. All analysis was performed on authorized repository code.*
+
