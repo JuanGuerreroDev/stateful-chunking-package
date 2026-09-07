@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities;
 
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIndexOutOfBoundsException;
 
 final class ChunkSession
 {
     /**
-     * @param array<int, string> $chunksMap Status per chunk index (e.g. [0 => 'completed', 1 => 'pending'])
+     * @param  array<int, string>  $chunksMap  Status per chunk index (e.g. [0 => 'completed', 1 => 'pending'])
      */
     public function __construct(
         public readonly SessionId $sessionId,
@@ -37,6 +38,22 @@ final class ChunkSession
         $this->expiresAt = $this->expiresAt > 0 ? $this->expiresAt : ($this->createdAt + 21600);
     }
 
+    /**
+     * Guard the aggregate's core invariant: a chunk index must fall within the
+     * session's declared [0, totalChunks) range. Enforcing it on the root (rather
+     * than in the calling Action) keeps invalid states unreachable no matter which
+     * use case drives the session.
+     */
+    public function assertChunkIndexWithinBounds(int $chunkIndex): void
+    {
+        if ($chunkIndex < 0 || $chunkIndex >= $this->totalChunks) {
+            throw new ChunkIndexOutOfBoundsException(
+                sprintf('Chunk index %d out of bounds (totalChunks=%d).', $chunkIndex, $this->totalChunks),
+                ['session_id' => $this->sessionId->value, 'chunk_index' => $chunkIndex, 'total_chunks' => $this->totalChunks]
+            );
+        }
+    }
+
     public function markChunkCompleted(int $chunkIndex): void
     {
         $this->chunksMap[$chunkIndex] = 'completed';
@@ -59,6 +76,7 @@ final class ChunkSession
                 return false;
             }
         }
+
         return true;
     }
 
@@ -73,6 +91,7 @@ final class ChunkSession
                 $pending[] = (int) $index;
             }
         }
+
         return $pending;
     }
 

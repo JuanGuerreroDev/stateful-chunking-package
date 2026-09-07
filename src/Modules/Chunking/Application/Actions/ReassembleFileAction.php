@@ -7,14 +7,16 @@ namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
-use RuntimeException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotReadyException;
 
 final class ReassembleFileAction
 {
     public function __construct(
         private readonly StateRepositoryInterface $repository,
         private readonly FileStorageInterface $storage,
-        private readonly StatefulChunkingService $tokenService = new StatefulChunkingService()
+        private readonly StatefulChunkingService $tokenService = new StatefulChunkingService
     ) {}
 
     /**
@@ -23,12 +25,18 @@ final class ReassembleFileAction
     public function handle(string $sessionId): array
     {
         $session = $this->repository->getSession($sessionId);
-        if (!$session) {
-            throw new RuntimeException('Upload session not found or expired.');
+        if (! $session) {
+            throw new SessionNotFoundException(
+                'Reassembly requested for unknown or expired session.',
+                ['session_id' => $sessionId]
+            );
         }
 
-        if (!$session->isComplete()) {
-            throw new RuntimeException('Cannot reassemble file: Not all chunks are completed.');
+        if (! $session->isComplete()) {
+            throw new SessionNotReadyException(
+                'Reassembly requested before all chunks were uploaded.',
+                ['session_id' => $sessionId, 'pending_chunks' => $session->getPendingChunkIndices()]
+            );
         }
 
         $assembledPath = $this->storage->reassembleFile(
@@ -59,7 +67,7 @@ final class ReassembleFileAction
             'verified' => true,
         ];
 
-        \Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled::dispatch(
+        FileReassembled::dispatch(
             sessionId: $sessionId,
             uploadToken: $uploadToken,
             filePath: $assembledPath,
