@@ -191,9 +191,14 @@ final class ChunkUploadController extends Controller
 
         $result = $action->handle($sessionId);
 
+        // Never log the upload_token: it is a bearer credential that resolves the
+        // staged file, so it stays out of the audit trail (the rest is safe context).
+        $auditResult = $result;
+        unset($auditResult['upload_token']);
+
         $this->logger()->info('File reassembled successfully', [
             'session_id' => $sessionId,
-            'result' => $result,
+            'result' => $auditResult,
             'ip' => $request->ip(),
         ]);
 
