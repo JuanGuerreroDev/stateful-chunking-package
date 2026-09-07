@@ -43,7 +43,9 @@ return [
     |
     | Default chunk size (must be a multiple of 256 KB = 262144 bytes).
     | Default is 2 MB (2,097,152 bytes) for PHP CLI compatibility.
-    | Session TTL default is 21600 seconds (6 hours).
+    | Session TTL default is 21600 seconds (6 hours). The staged upload token
+    | has its own, shorter lifetime (token_ttl, default 7200 = 2 hours) so a
+    | leaked token expires well before the upload session it was minted from.
     |
     */
     'chunk_size_bytes' => (int) env('STATEFUL_CHUNKING_SIZE_BYTES', 2097152),
@@ -57,7 +59,7 @@ return [
     ],
     'allowed_extensions' => null,
     'session_ttl' => (int) env('STATEFUL_CHUNKING_SESSION_TTL', 21600),
-    'max_chunk_retries' => (int) env('STATEFUL_CHUNKING_MAX_RETRIES', 3),
+    'token_ttl' => (int) env('STATEFUL_CHUNKING_TOKEN_TTL', 7200),
 
     /*
     |--------------------------------------------------------------------------
@@ -78,4 +80,3 @@ return [
     'require_auth' => (bool) env('STATEFUL_CHUNKING_REQUIRE_AUTH', false),
     'log_channel' => env('STATEFUL_CHUNKING_LOG_CHANNEL'),
 ];
-

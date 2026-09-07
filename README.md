@@ -58,6 +58,7 @@ STATEFUL_CHUNKING_ROUTE_PREFIX=api/chunks
 # File & Session Limits
 STATEFUL_CHUNKING_SIZE_BYTES=2097152
 STATEFUL_CHUNKING_SESSION_TTL=21600
+STATEFUL_CHUNKING_TOKEN_TTL=7200                    # staged upload_token lifetime (2h), independent of the session
 
 # Upload Limits & Storage-Amplification Guardrails
 STATEFUL_CHUNKING_MAX_FILE_SIZE_BYTES=10737418240   # 10 GB cap on the declared file size
