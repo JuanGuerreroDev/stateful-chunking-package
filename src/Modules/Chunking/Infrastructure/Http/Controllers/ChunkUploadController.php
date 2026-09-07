@@ -4,23 +4,40 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Controllers;
 
-use Illuminate\Routing\Controller;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\UploadChunkAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\GetChunkStatusAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\ReassembleFileAction;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\GetChunkStatusAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\ReassembleFileAction;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\UploadChunkAction;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\UploadChunkDTO;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
-use Throwable;
+use Psr\Log\LoggerInterface;
 
+/**
+ * HTTP adapter for the chunking lifecycle.
+ *
+ * By design this controller does NOT catch or translate domain exceptions. Every
+ * expected failure is a {@see ChunkingException},
+ * which renders itself (correct status + safe message) and audits itself via its
+ * report() hook; anything unexpected falls through to Laravel's global handler,
+ * which sanitises the response in production. Keeping error translation out of the
+ * HTTP layer is what makes this a thin adapter over the application Actions.
+ *
+ * The only inline guards here are input-shape checks (empty / oversized payload),
+ * which are request concerns, not domain failures.
+ */
 final class ChunkUploadController extends Controller
 {
     private StateRepositoryInterface $stateRepository;
@@ -30,83 +47,77 @@ final class ChunkUploadController extends Controller
         $this->stateRepository = $repository ?? app(StateRepositoryInterface::class);
     }
 
-    private function logger(): \Psr\Log\LoggerInterface
+    private function logger(): LoggerInterface
     {
         $channel = config('stateful-chunking.log_channel');
         $channelName = is_string($channel) ? $channel : null;
+
         return Log::channel($channelName);
     }
 
     private function resolveCurrentOwnerId(Request $request): string
     {
         $user = $request->user();
-        if ($user instanceof \Illuminate\Contracts\Auth\Authenticatable) {
+        if ($user instanceof Authenticatable) {
             $authId = $user->getAuthIdentifier();
             if ((is_string($authId) || is_int($authId)) && (string) $authId !== '') {
-                return 'user:' . (string) $authId;
+                return 'user:'.(string) $authId;
             }
         }
 
         $ip = $request->ip() ?: '127.0.0.1';
-        return 'ip:' . $ip;
+
+        return 'ip:'.$ip;
     }
 
-    private function verifySessionOwnership(?ChunkSession $session, Request $request): ?JsonResponse
+    /**
+     * Enforce that the caller owns the session. Raises a domain exception (403) that
+     * renders and audits itself, so the HTTP layer never handles the failure inline.
+     */
+    private function assertSessionOwnership(?ChunkSession $session, Request $request): void
     {
         if ($session === null) {
-            return null;
+            return;
         }
 
-        if ($session->ownerId !== null && $session->ownerId !== $this->resolveCurrentOwnerId($request)) {
-            $this->logger()->warning('Unauthorized attempt to access chunk session (IDOR prevented)', [
-                'session_id' => $session->sessionId->value,
-                'session_owner' => $session->ownerId,
-                'attempted_by' => $this->resolveCurrentOwnerId($request),
-                'ip' => $request->ip(),
-            ]);
+        $attemptedBy = $this->resolveCurrentOwnerId($request);
 
-            return response()->json([
-                'message' => 'Unauthorized action on chunk session.',
-            ], 403);
+        if ($session->ownerId !== null && $session->ownerId !== $attemptedBy) {
+            throw new UnauthorizedSessionAccessException(
+                'Unauthorized attempt to access chunk session (IDOR prevented).',
+                [
+                    'session_id' => $session->sessionId->value,
+                    'session_owner' => $session->ownerId,
+                    'attempted_by' => $attemptedBy,
+                    'ip' => $request->ip(),
+                ]
+            );
         }
-
-        return null;
     }
 
     public function initiate(
         InitiateChunkRequest $request,
         InitiateChunkSessionAction $action
     ): JsonResponse {
-        try {
-            /** @var array<string, mixed> $validated */
-            $validated = $request->validated();
-            $ownerId = $this->resolveCurrentOwnerId($request);
-            $dto = InitiateSessionDTO::fromArray($validated, $ownerId);
-            $session = $action->handle($dto);
+        /** @var array<string, mixed> $validated */
+        $validated = $request->validated();
+        $ownerId = $this->resolveCurrentOwnerId($request);
+        $dto = InitiateSessionDTO::fromArray($validated, $ownerId);
+        $session = $action->handle($dto);
 
-            $this->logger()->info('Chunk upload session initiated', [
-                'session_id' => $session->sessionId->value,
-                'file_name' => $session->fileName,
-                'file_size' => $session->fileSize,
-                'total_chunks' => $session->totalChunks,
-                'owner_id' => $ownerId,
-                'ip' => $request->ip(),
-            ]);
+        $this->logger()->info('Chunk upload session initiated', [
+            'session_id' => $session->sessionId->value,
+            'file_name' => $session->fileName,
+            'file_size' => $session->fileSize,
+            'total_chunks' => $session->totalChunks,
+            'owner_id' => $ownerId,
+            'ip' => $request->ip(),
+        ]);
 
-            return response()->json([
-                'message' => 'Session initiated successfully',
-                'data' => $session->toArray(),
-            ], 201);
-        } catch (\Throwable $e) {
-            $this->logger()->error('Chunk upload session initiation failed', [
-                'error' => $e->getMessage(),
-                'ip' => $request->ip(),
-            ]);
-
-            return response()->json([
-                'message' => 'Upload session initiation failed. Please try again.',
-            ], 500);
-        }
+        return response()->json([
+            'message' => 'Session initiated successfully',
+            'data' => $session->toArray(),
+        ], 201);
     }
 
     public function upload(
@@ -117,89 +128,59 @@ final class ChunkUploadController extends Controller
         $validated = $request->validated();
 
         $rawSessionId = isset($validated['session_id']) && (is_string($validated['session_id']) || is_numeric($validated['session_id'])) ? (string) $validated['session_id'] : '';
-        $chunkIndex = isset($validated['chunk_index']) && (is_int($validated['chunk_index']) || is_string($validated['chunk_index'])) ? $validated['chunk_index'] : null;
 
-        try {
-            $existingSession = $this->stateRepository->getSession($rawSessionId);
-            if ($authError = $this->verifySessionOwnership($existingSession, $request)) {
-                return $authError;
+        $existingSession = $this->stateRepository->getSession($rawSessionId);
+        $this->assertSessionOwnership($existingSession, $request);
+
+        $content = '';
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            if ($file instanceof UploadedFile) {
+                $content = (string) file_get_contents($file->getRealPath());
             }
-            
-            $content = '';
-            if ($request->hasFile('file')) {
-                $file = $request->file('file');
-                if ($file instanceof \Illuminate\Http\UploadedFile) {
-                    $content = (string) file_get_contents($file->getRealPath());
-                }
-            } elseif ($request->has('file') && is_string($request->input('file'))) {
-                $content = (string) $request->input('file');
-            } else {
-                $content = (string) $request->getContent();
-            }
-
-            if (trim($content) === '' && !$request->hasFile('file')) {
-                return response()->json(['message' => 'Chunk content cannot be empty'], 422);
-            }
-
-            $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
-            $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
-            $maxAllowedBytes = (int) ($chunkSizeBytes * 1.1);
-
-            if (strlen($content) > $maxAllowedBytes) {
-                return response()->json([
-                    'message' => sprintf(
-                        'Chunk payload size (%d bytes) exceeds maximum allowed limit (%d bytes).',
-                        strlen($content),
-                        $maxAllowedBytes
-                    ),
-                ], 413);
-            }
-
-            $dto = UploadChunkDTO::fromArray($validated, $content);
-            $session = $action->handle($dto);
-
-            return response()->json([
-                'message' => sprintf('Chunk %d uploaded successfully', $dto->chunkIndex),
-                'data' => $session->toArray(),
-            ], 200);
-        } catch (\Throwable $e) {
-            $this->logger()->warning('Chunk upload failed', [
-                'session_id' => $rawSessionId,
-                'chunk_index' => $chunkIndex,
-                'error' => $e->getMessage(),
-                'ip' => $request->ip(),
-            ]);
-
-            return response()->json([
-                'message' => 'Chunk upload failed. Please try again.',
-            ], 400);
+        } elseif ($request->has('file') && is_string($request->input('file'))) {
+            $content = (string) $request->input('file');
+        } else {
+            $content = (string) $request->getContent();
         }
+
+        if (trim($content) === '' && ! $request->hasFile('file')) {
+            return response()->json(['message' => 'Chunk content cannot be empty'], 422);
+        }
+
+        $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+        $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
+        $maxAllowedBytes = (int) ($chunkSizeBytes * 1.1);
+
+        if (strlen($content) > $maxAllowedBytes) {
+            return response()->json([
+                'message' => sprintf(
+                    'Chunk payload size (%d bytes) exceeds maximum allowed limit (%d bytes).',
+                    strlen($content),
+                    $maxAllowedBytes
+                ),
+            ], 413);
+        }
+
+        $dto = UploadChunkDTO::fromArray($validated, $content);
+        $session = $action->handle($dto);
+
+        return response()->json([
+            'message' => sprintf('Chunk %d uploaded successfully', $dto->chunkIndex),
+            'data' => $session->toArray(),
+        ], 200);
     }
 
     public function status(
         string $sessionId,
         GetChunkStatusAction $action
     ): JsonResponse {
-        try {
-            $session = $action->handle($sessionId);
-            if ($authError = $this->verifySessionOwnership($session, request())) {
-                return $authError;
-            }
+        $session = $action->handle($sessionId);
+        $this->assertSessionOwnership($session, request());
 
-            return response()->json([
-                'data' => $session->toArray(),
-            ], 200);
-        } catch (\Throwable $e) {
-            $this->logger()->info('Chunk status check failed', [
-                'session_id' => $sessionId,
-                'error' => $e->getMessage(),
-                'ip' => request()->ip(),
-            ]);
-
-            return response()->json([
-                'message' => 'Session status not found.',
-            ], 404);
-        }
+        return response()->json([
+            'data' => $session->toArray(),
+        ], 200);
     }
 
     public function complete(
@@ -211,72 +192,44 @@ final class ChunkUploadController extends Controller
         $rawSessionId = $request->input('session_id');
         $sessionId = is_string($rawSessionId) || is_numeric($rawSessionId) ? (string) $rawSessionId : '';
 
-        try {
-            $session = $this->stateRepository->getSession($sessionId);
-            if ($authError = $this->verifySessionOwnership($session, $request)) {
-                return $authError;
-            }
+        $session = $this->stateRepository->getSession($sessionId);
+        $this->assertSessionOwnership($session, $request);
 
-            $result = $action->handle($sessionId);
+        $result = $action->handle($sessionId);
 
-            $this->logger()->info('File reassembled successfully', [
-                'session_id' => $sessionId,
-                'result' => $result,
-                'ip' => $request->ip(),
-            ]);
+        $this->logger()->info('File reassembled successfully', [
+            'session_id' => $sessionId,
+            'result' => $result,
+            'ip' => $request->ip(),
+        ]);
 
-            $responseData = $result;
-            if (!config('stateful-chunking.expose_server_paths', false)) {
-                unset($responseData['path'], $responseData['relative_path']);
-            }
-
-            return response()->json([
-                'message' => 'File reassembled successfully',
-                'data' => $responseData,
-            ], 200);
-        } catch (\Throwable $e) {
-            $this->logger()->error('File reassembly failed', [
-                'session_id' => $sessionId,
-                'error' => $e->getMessage(),
-                'ip' => $request->ip(),
-            ]);
-
-            return response()->json([
-                'message' => 'File reassembly processing failed. Please try again.',
-            ], 400);
+        $responseData = $result;
+        if (! config('stateful-chunking.expose_server_paths', false)) {
+            unset($responseData['path'], $responseData['relative_path']);
         }
+
+        return response()->json([
+            'message' => 'File reassembled successfully',
+            'data' => $responseData,
+        ], 200);
     }
 
     public function cancel(
         string $sessionId,
         CancelChunkSessionAction $action
     ): JsonResponse {
-        try {
-            $session = $this->stateRepository->getSession($sessionId);
-            if ($authError = $this->verifySessionOwnership($session, request())) {
-                return $authError;
-            }
+        $session = $this->stateRepository->getSession($sessionId);
+        $this->assertSessionOwnership($session, request());
 
-            $action->handle($sessionId);
+        $action->handle($sessionId);
 
-            $this->logger()->info('Chunk upload session cancelled', [
-                'session_id' => $sessionId,
-                'ip' => request()->ip(),
-            ]);
+        $this->logger()->info('Chunk upload session cancelled', [
+            'session_id' => $sessionId,
+            'ip' => request()->ip(),
+        ]);
 
-            return response()->json([
-                'message' => 'Session cancelled and resources purged',
-            ], 200);
-        } catch (\Throwable $e) {
-            $this->logger()->error('Chunk upload session cancellation failed', [
-                'session_id' => $sessionId,
-                'error' => $e->getMessage(),
-                'ip' => request()->ip(),
-            ]);
-
-            return response()->json([
-                'message' => 'Session cancellation failed. Please try again.',
-            ], 500);
-        }
+        return response()->json([
+            'message' => 'Session cancelled and resources purged',
+        ], 200);
     }
 }
