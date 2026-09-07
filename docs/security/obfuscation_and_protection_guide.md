@@ -292,6 +292,8 @@ opcache.restrict_api = /var/www/html
 
 The package's Staged Upload pattern emits an encrypted `upload_token` upon file reassembly, preventing IDOR and Path Traversal:
 - The token payload is encrypted and signed using Laravel's native `Crypt::encryptString()` (AES-256-CBC with HMAC).
+- **Token Lifetime**: The token carries its own expiry (`stateful-chunking.token_ttl`, default 7200s / 2h), deliberately shorter than the chunk session TTL, so a leaked token expires well before the session it was minted from.
+- **Path Non-Disclosure**: API responses never include the assembled file's server path; the `stateful-chunking.expose_server_paths` flag (default `false`) gates this, so consumers work exclusively with the opaque `upload_token`. The package also keeps the token out of its own audit logs.
 - **Host Application Security**: The security of `upload_token` relies strictly on the host application's `APP_KEY`. In multi-server or clustered architectures, ensure all web instances share the identical `APP_KEY`. Never log, leak, or expose decrypted tokens in frontend responses.
 
 ---

@@ -13,12 +13,16 @@ final class StatefulChunkingService
     private function getDefaultDisk(): string
     {
         $disk = config('stateful-chunking.storage_disk', 'local');
+
         return is_string($disk) ? $disk : 'local';
     }
 
     private function getDefaultTtl(): int
     {
-        $ttl = config('stateful-chunking.session_ttl', 7200);
+        // The upload token has its own lifetime, deliberately shorter than the
+        // chunk session's, so a leaked token expires well before the session.
+        $ttl = config('stateful-chunking.token_ttl', 7200);
+
         return is_numeric($ttl) ? (int) $ttl : 7200;
     }
 
@@ -70,7 +74,7 @@ final class StatefulChunkingService
             $decryptedJson = Crypt::decryptString($uploadToken);
             $decoded = json_decode($decryptedJson, true, 512, JSON_THROW_ON_ERROR);
 
-            if (!is_array($decoded)) {
+            if (! is_array($decoded)) {
                 return new StagedFileDTO(
                     sessionId: '',
                     tempPath: '',
