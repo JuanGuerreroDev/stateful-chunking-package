@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Controllers;
 
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
@@ -23,6 +23,7 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingExcepti
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Responses\ChunkingResponse;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -98,7 +99,7 @@ final class ChunkUploadController extends Controller
     public function initiate(
         InitiateChunkRequest $request,
         InitiateChunkSessionAction $action
-    ): JsonResponse {
+    ): Responsable {
         /** @var array<string, mixed> $validated */
         $validated = $request->validated();
         $ownerId = $this->resolveCurrentOwnerId($request);
@@ -114,16 +115,13 @@ final class ChunkUploadController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        return response()->json([
-            'message' => 'Session initiated successfully',
-            'data' => $session->toArray(),
-        ], 201);
+        return ChunkingResponse::sessionInitiated($session);
     }
 
     public function upload(
         UploadChunkRequest $request,
         UploadChunkAction $action
-    ): JsonResponse {
+    ): Responsable {
         /** @var array<string, mixed> $validated */
         $validated = $request->validated();
 
@@ -145,7 +143,7 @@ final class ChunkUploadController extends Controller
         }
 
         if (trim($content) === '' && ! $request->hasFile('file')) {
-            return response()->json(['message' => 'Chunk content cannot be empty'], 422);
+            return ChunkingResponse::inputError('Chunk content cannot be empty', 422);
         }
 
         $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
@@ -153,40 +151,36 @@ final class ChunkUploadController extends Controller
         $maxAllowedBytes = (int) ($chunkSizeBytes * 1.1);
 
         if (strlen($content) > $maxAllowedBytes) {
-            return response()->json([
-                'message' => sprintf(
+            return ChunkingResponse::inputError(
+                sprintf(
                     'Chunk payload size (%d bytes) exceeds maximum allowed limit (%d bytes).',
                     strlen($content),
                     $maxAllowedBytes
                 ),
-            ], 413);
+                413
+            );
         }
 
         $dto = UploadChunkDTO::fromArray($validated, $content);
         $session = $action->handle($dto);
 
-        return response()->json([
-            'message' => sprintf('Chunk %d uploaded successfully', $dto->chunkIndex),
-            'data' => $session->toArray(),
-        ], 200);
+        return ChunkingResponse::chunkUploaded($session, $dto->chunkIndex);
     }
 
     public function status(
         string $sessionId,
         GetChunkStatusAction $action
-    ): JsonResponse {
+    ): Responsable {
         $session = $action->handle($sessionId);
         $this->assertSessionOwnership($session, request());
 
-        return response()->json([
-            'data' => $session->toArray(),
-        ], 200);
+        return ChunkingResponse::sessionStatus($session);
     }
 
     public function complete(
         Request $request,
         ReassembleFileAction $action
-    ): JsonResponse {
+    ): Responsable {
         $request->validate(['session_id' => 'required|string']);
 
         $rawSessionId = $request->input('session_id');
@@ -203,21 +197,13 @@ final class ChunkUploadController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        $responseData = $result;
-        if (! config('stateful-chunking.expose_server_paths', false)) {
-            unset($responseData['path'], $responseData['relative_path']);
-        }
-
-        return response()->json([
-            'message' => 'File reassembled successfully',
-            'data' => $responseData,
-        ], 200);
+        return ChunkingResponse::fileReassembled($result);
     }
 
     public function cancel(
         string $sessionId,
         CancelChunkSessionAction $action
-    ): JsonResponse {
+    ): Responsable {
         $session = $this->stateRepository->getSession($sessionId);
         $this->assertSessionOwnership($session, request());
 
@@ -228,8 +214,6 @@ final class ChunkUploadController extends Controller
             'ip' => request()->ip(),
         ]);
 
-        return response()->json([
-            'message' => 'Session cancelled and resources purged',
-        ], 200);
+        return ChunkingResponse::sessionCancelled();
     }
 }
