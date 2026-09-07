@@ -4,7 +4,7 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/juanoecr/stateful-chunking.svg?style=flat-square)](https://packagist.org/packages/juanoecr/stateful-chunking)
 [![License](https://img.shields.io/packagist/l/juanoecr/stateful-chunking.svg?style=flat-square)](LICENSE)
 
-High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 12** built with **Hexagonal Architecture** and **SOLID principles**. Powered by a **Universal Cache State Persistence** system (supporting all Laravel Cache stores: Redis, Memcached, Database, File, DynamoDB, Array) for session tracking, state TTL management, and atomic byte reassembly.
+High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, 12, and 13** built with **Hexagonal Architecture** and **SOLID principles**. Powered by a **Universal Cache State Persistence** system (supporting all Laravel Cache stores: Redis, Memcached, Database, File, DynamoDB, Array) for session tracking, state TTL management, and atomic byte reassembly.
 
 ---
 
@@ -14,6 +14,7 @@ High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, and 
 - **Universal Cache State Persistence**: Works out-of-the-box using any Laravel cache store (`redis`, `database`, `file`, `memcached`, `dynamodb`, `array`) with atomic locking support and automatic non-lock fallback.
 - **Dual-Layer Integrity Validation**: Validates individual chunk checksums and full assembled file integrity against SHA-256 hashes.
 - **Staged Upload Pattern & Cryptographic Tokens**: Returns AES-256 encrypted, HMAC-signed `upload_token`s upon completion. Protects against OWASP IDOR and Path Traversal with zero physical storage path exposure.
+- **Hardened Upload Validation**: Rejects path-traversal, dot-file, trailing-dot/space, and double-extension file names, plus a configurable blocklist of ~45 executable extensions (`php`, `phtml`, `sh`, `exe`, …) with an optional strict allowlist. Bounds `total_chunks` to the declared `file_size` to neutralize storage-amplification DoS (CWE-770).
 - **Consumer DX Helpers & Validation Rule**: First-class `StatefulChunking` facade (`resolveToken`) and `ValidUploadToken` validation rule for clean, decoupled integration in downstream business modules.
 - **Configurable Storage**: Assembles files using Laravel's `Storage` facade (`local`, `s3`, `gcs`, etc.).
 - **Event-Driven Lifecycle**: Dispatches native Laravel events (`ChunkSessionInitiated`, `ChunkUploaded`, `FileReassembled`, `ChunkSessionCancelled`) for easy extension with virus scanners, WebSockets, and metrics.
@@ -48,6 +49,7 @@ Customize package parameters in `config/stateful-chunking.php` or via `.env`:
 ```env
 # Specific Cache Store: leave empty to use Laravel's default cache store, or specify store (redis, database, file, etc.)
 STATEFUL_CHUNKING_CACHE_STORE=
+# STATEFUL_CHUNKING_DRIVER is accepted as a legacy alias for CACHE_STORE (read as a fallback when CACHE_STORE is empty)
 
 # Routes & Endpoint Configuration
 STATEFUL_CHUNKING_ROUTES_ENABLED=true
@@ -57,9 +59,18 @@ STATEFUL_CHUNKING_ROUTE_PREFIX=api/chunks
 STATEFUL_CHUNKING_SIZE_BYTES=2097152
 STATEFUL_CHUNKING_SESSION_TTL=21600
 
+# Upload Limits & Storage-Amplification Guardrails
+STATEFUL_CHUNKING_MAX_FILE_SIZE_BYTES=10737418240   # 10 GB cap on the declared file size
+STATEFUL_CHUNKING_MAX_TOTAL_CHUNKS=10000            # hard ceiling on the declared chunk count
+
 # Storage Disk & Path
 STATEFUL_CHUNKING_STORAGE_DISK=local
 STATEFUL_CHUNKING_STORAGE_PATH=uploads
+
+# Security & Disclosure
+STATEFUL_CHUNKING_EXPOSE_SERVER_PATHS=false         # keep real filesystem paths out of API responses
+STATEFUL_CHUNKING_REQUIRE_AUTH=false                # require an authenticated user on the chunk endpoints (403 otherwise)
+STATEFUL_CHUNKING_LOG_CHANNEL=                      # dedicated log channel (empty = app default)
 
 # Rate Limiting & Throttling (Requests per minute per user/IP)
 STATEFUL_CHUNKING_RATE_LIMIT_ENABLED=true
@@ -69,6 +80,8 @@ STATEFUL_CHUNKING_RATE_STATUS=60
 STATEFUL_CHUNKING_RATE_COMPLETE=20
 STATEFUL_CHUNKING_RATE_CANCEL=20
 ```
+
+> **Filename allow/deny list:** the executable-extension blocklist that rejects `.php`, `.phtml`, `.sh`, `.exe`, … (and the optional strict `allowed_extensions` whitelist) live as arrays in the published `config/stateful-chunking.php`; they have no `.env` equivalent. Edit them there to tune which uploads are accepted.
 
 ---
 
