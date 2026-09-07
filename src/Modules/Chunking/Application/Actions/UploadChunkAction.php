@@ -45,6 +45,12 @@ final class UploadChunkAction
             return $session;
         }
 
+        // Defense-in-depth against storage amplification: reject the chunk before it
+        // ever touches disk if it would push the session's cumulative upload past the
+        // budget its declared file_size allows.
+        $chunkBytes = strlen($dto->content);
+        $session->assertWithinByteBudget($chunkBytes, $this->chunkSizeBytes(), $this->maxFileSizeBytes());
+
         // Store chunk payload & validate chunk SHA-256
         $this->storage->storeChunk(
             sessionId: $dto->sessionId->value,
@@ -54,11 +60,12 @@ final class UploadChunkAction
         );
 
         try {
-            // Update state in cache store
+            // Update state in cache store, recording the chunk's bytes atomically.
             $this->repository->updateChunkStatus(
                 sessionId: $dto->sessionId->value,
                 chunkIndex: $dto->chunkIndex,
-                status: 'completed'
+                status: 'completed',
+                chunkBytes: $chunkBytes
             );
         } catch (\Throwable $e) {
             // Rollback: clean up written chunk file so it doesn't stay orphaned on disk
@@ -79,5 +86,19 @@ final class UploadChunkAction
         );
 
         return $updatedSession;
+    }
+
+    private function chunkSizeBytes(): int
+    {
+        $raw = config('stateful-chunking.chunk_size_bytes', 2097152);
+
+        return is_numeric($raw) && (int) $raw > 0 ? (int) $raw : 2097152;
+    }
+
+    private function maxFileSizeBytes(): int
+    {
+        $raw = config('stateful-chunking.max_file_size_bytes', 10737418240);
+
+        return is_numeric($raw) && (int) $raw > 0 ? (int) $raw : 10737418240;
     }
 }

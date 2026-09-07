@@ -8,6 +8,7 @@ use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIndexOutOfBoundsException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
 
 final class ChunkSession
 {
@@ -25,7 +26,8 @@ final class ChunkSession
         public array $chunksMap = [],
         public int $createdAt = 0,
         public int $expiresAt = 0,
-        public ?string $ownerId = null
+        public ?string $ownerId = null,
+        public int $uploadedBytes = 0
     ) {
         if (empty($this->chunksMap)) {
             for ($i = 0; $i < $totalChunks; $i++) {
@@ -52,6 +54,49 @@ final class ChunkSession
                 ['session_id' => $this->sessionId->value, 'chunk_index' => $chunkIndex, 'total_chunks' => $this->totalChunks]
             );
         }
+    }
+
+    /**
+     * The maximum number of bytes this session may ever hold on disk, derived from
+     * the declared file size plus one chunk of rounding slack, and never above the
+     * configured hard cap. This is what turns file_size from a self-reported number
+     * into an enforced limit.
+     */
+    public function byteBudget(int $chunkSizeBytes, int $maxFileSizeBytes): int
+    {
+        return min($maxFileSizeBytes, $this->fileSize + $chunkSizeBytes);
+    }
+
+    /**
+     * Defense-in-depth for storage amplification: reject a chunk whose bytes would
+     * push the session's cumulative upload past the budget its declared file_size
+     * allows. Enforced on the aggregate root so no use case can bypass it.
+     */
+    public function assertWithinByteBudget(int $incomingBytes, int $chunkSizeBytes, int $maxFileSizeBytes): void
+    {
+        $budget = $this->byteBudget($chunkSizeBytes, $maxFileSizeBytes);
+
+        if ($this->uploadedBytes + $incomingBytes > $budget) {
+            throw new UploadBudgetExceededException(
+                sprintf(
+                    'Cumulative upload (%d + %d bytes) exceeds session budget of %d bytes.',
+                    $this->uploadedBytes,
+                    $incomingBytes,
+                    $budget
+                ),
+                [
+                    'session_id' => $this->sessionId->value,
+                    'uploaded_bytes' => $this->uploadedBytes,
+                    'incoming_bytes' => $incomingBytes,
+                    'budget' => $budget,
+                ]
+            );
+        }
+    }
+
+    public function recordUploadedBytes(int $bytes): void
+    {
+        $this->uploadedBytes += max(0, $bytes);
     }
 
     public function markChunkCompleted(int $chunkIndex): void
@@ -114,6 +159,7 @@ final class ChunkSession
             'session_id' => $this->sessionId->value,
             'file_name' => $this->fileName,
             'file_size' => $this->fileSize,
+            'uploaded_bytes' => $this->uploadedBytes,
             'total_chunks' => $this->totalChunks,
             'total_hash' => $this->totalHash->value,
             'fingerprint' => $this->fingerprint,
