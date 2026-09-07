@@ -32,8 +32,23 @@ interface StateRepositoryInterface
 
     /**
      * Atomically update the status of a specific chunk index within the session.
+     *
+     * When $chunkBytes is provided and the chunk transitions to 'completed' for the
+     * first time, the session's cumulative uploaded-byte counter is incremented in
+     * the same atomic mutation, so the byte budget cannot be raced.
      */
-    public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status): void;
+    public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status, ?int $chunkBytes = null): void;
+
+    /**
+     * Run $callback while holding the session's exclusive lock, so lifecycle steps
+     * that must not overlap (e.g. reassembly) are serialised per session.
+     *
+     * @template T
+     *
+     * @param  callable():T  $callback
+     * @return T
+     */
+    public function withSessionLock(string $sessionId, callable $callback): mixed;
 
     /**
      * Purge a session and its associated fingerprint index immediately.

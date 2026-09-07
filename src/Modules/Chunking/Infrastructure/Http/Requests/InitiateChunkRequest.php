@@ -56,12 +56,14 @@ final class InitiateChunkRequest extends FormRequest
                     // 1. Block dot-files (e.g., .htaccess, .env)
                     if (str_starts_with($strValue, '.')) {
                         $fail('Filenames starting with a dot are forbidden.');
+
                         return;
                     }
 
                     // 2. Block trailing dots or spaces (Windows normalization bypass)
                     if (str_ends_with($strValue, '.') || str_ends_with($strValue, ' ')) {
                         $fail('Filenames with trailing dots or spaces are forbidden.');
+
                         return;
                     }
 
@@ -70,6 +72,7 @@ final class InitiateChunkRequest extends FormRequest
                     // 3. Must contain at least one dot separating name and extension
                     if (count($segments) < 2 || end($segments) === '') {
                         $fail('The filename must contain a valid extension.');
+
                         return;
                     }
 
@@ -77,8 +80,9 @@ final class InitiateChunkRequest extends FormRequest
 
                     // 4. Enforce whitelist if configured
                     if ($allowedExts !== null) {
-                        if (!in_array($finalExtension, $allowedExts, true)) {
+                        if (! in_array($finalExtension, $allowedExts, true)) {
                             $fail("The file extension .{$finalExtension} is not allowed.");
+
                             return;
                         }
                     }
@@ -89,26 +93,39 @@ final class InitiateChunkRequest extends FormRequest
                         $cleanSegment = strtolower(trim($segment));
                         if (in_array($cleanSegment, $forbiddenExts, true)) {
                             $fail("The file extension or component .{$cleanSegment} is forbidden for uploads.");
+
                             return;
                         }
                     }
                 },
             ],
-            'file_size' => ['required', 'integer', 'min:1', 'max:' . $maxFileSize],
-            'total_chunks' => [
-                'required',
-                'integer',
-                'min:' . (function () {
-                    $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
-                    $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
-                    $fileSizeInput = $this->input('file_size');
-                    if (is_numeric($fileSizeInput) && (int) $fileSizeInput > 0) {
-                        return max(1, (int) ceil((int) $fileSizeInput / $chunkSizeBytes));
-                    }
-                    return 1;
-                })(),
-                'max:' . $maxChunks,
-            ],
+            'file_size' => ['required', 'integer', 'min:1', 'max:'.$maxFileSize],
+            'total_chunks' => (function () use ($maxChunks): array {
+                // Derive the chunk count the declared file_size actually implies, using the
+                // server-configured chunk size. Both the lower AND upper bound are pinned to
+                // this value: the lower bound guarantees enough chunks to hold the file, and
+                // the upper bound stops a client from claiming far more chunks than the file
+                // needs. Without the upper bound, a 1-byte file could declare max_total_chunks
+                // and stage gigabytes of oversized chunks on disk (storage-amplification DoS),
+                // since max_file_size_bytes only caps the *declared* size, never the bytes
+                // actually written. The +1 absorbs off-by-one rounding on the final chunk.
+                $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+                $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
+
+                $fileSizeInput = $this->input('file_size');
+                $expectedChunks = is_numeric($fileSizeInput) && (int) $fileSizeInput > 0
+                    ? max(1, (int) ceil((int) $fileSizeInput / $chunkSizeBytes))
+                    : 1;
+
+                $upperBound = min($maxChunks, $expectedChunks + 1);
+
+                return [
+                    'required',
+                    'integer',
+                    'min:'.$expectedChunks,
+                    'max:'.$upperBound,
+                ];
+            })(),
             'total_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/i'],
             'fingerprint' => ['nullable', 'string', 'max:255'],
         ];

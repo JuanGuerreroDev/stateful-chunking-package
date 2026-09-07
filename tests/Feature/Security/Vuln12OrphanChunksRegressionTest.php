@@ -37,11 +37,11 @@ class Vuln12OrphanChunksRegressionTest extends TestCase
 
         // Initiate session first to get valid session id
         $initRes = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'orphan_test.txt',
-            'file_size'    => strlen($chunkData),
+            'file_name' => 'orphan_test.txt',
+            'file_size' => strlen($chunkData),
             'total_chunks' => 1,
-            'total_hash'   => $chunkHash,
-            'fingerprint'  => 'orphan_fp_' . uniqid(),
+            'total_hash' => $chunkHash,
+            'fingerprint' => 'orphan_fp_'.uniqid(),
         ]);
 
         $initRes->assertStatus(201);
@@ -61,17 +61,19 @@ class Vuln12OrphanChunksRegressionTest extends TestCase
             'POST',
             '/api/chunks/upload',
             [
-                'session_id'  => $sessionId,
+                'session_id' => $sessionId,
                 'chunk_index' => 0,
-                'chunk_hash'  => $chunkHash,
+                'chunk_hash' => $chunkHash,
             ],
             [],
             ['file' => $file],
             ['HTTP_ACCEPT' => 'application/json']
         );
 
-        // Upload endpoint fails with 400 (caught by controller)
-        $response->assertStatus(400);
+        // The mocked store failure is an unexpected (non-domain) error, so it falls
+        // through to the framework handler as a sanitised 500. The rollback below is
+        // what this test really guards.
+        $response->assertStatus(500);
 
         // Critical Assertion: The physical chunk file MUST NOT exist on disk!
         $disk = Storage::disk('local');
@@ -92,11 +94,11 @@ class Vuln12OrphanChunksRegressionTest extends TestCase
         $claimedHash = str_repeat('f', 64); // Mismatched expected total hash
 
         $initRes = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'clean_assembled_test.txt',
-            'file_size'    => strlen($chunkData),
+            'file_name' => 'clean_assembled_test.txt',
+            'file_size' => strlen($chunkData),
             'total_chunks' => 1,
-            'total_hash'   => $claimedHash,
-            'fingerprint'  => 'orphan_reassemble_fp_' . uniqid(),
+            'total_hash' => $claimedHash,
+            'fingerprint' => 'orphan_reassemble_fp_'.uniqid(),
         ]);
 
         $initRes->assertStatus(201);
@@ -105,9 +107,9 @@ class Vuln12OrphanChunksRegressionTest extends TestCase
         // Upload chunk 0
         $file = UploadedFile::fake()->createWithContent('chunk_0.tmp', $chunkData);
         $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => hash('sha256', $chunkData),
+            'chunk_hash' => hash('sha256', $chunkData),
         ], [], ['file' => $file], ['HTTP_ACCEPT' => 'application/json']);
 
         // Trigger complete - should fail because assembled file hash mismatches claimedHash
@@ -115,7 +117,8 @@ class Vuln12OrphanChunksRegressionTest extends TestCase
             'session_id' => $sessionId,
         ]);
 
-        $completeRes->assertStatus(400);
+        // Assembled-hash mismatch is a typed integrity failure mapped to 422.
+        $completeRes->assertStatus(422);
 
         // Assert no assembled file exists on disk
         $disk = Storage::disk('local');
