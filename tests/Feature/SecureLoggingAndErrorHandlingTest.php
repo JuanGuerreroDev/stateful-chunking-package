@@ -2,7 +2,6 @@
 
 namespace Juanoecr\StatefulChunking\Tests\Feature;
 
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Juanoecr\StatefulChunking\Tests\TestCase;
 
@@ -16,11 +15,12 @@ class SecureLoggingAndErrorHandlingTest extends TestCase
             'session_id' => $validUuid,
         ]);
 
-        $response->assertStatus(400);
+        // A non-existent session is now a typed domain failure: 404, safe message.
+        $response->assertStatus(404);
         $json = $response->json();
-        
-        // Assert message is generic and sanitized
-        $this->assertEquals('File reassembly processing failed. Please try again.', $json['message']);
+
+        // Assert message is generic and sanitized (no paths, no class names).
+        $this->assertEquals('Upload session not found.', $json['message']);
         $this->assertStringNotContainsString('/var/www', $json['message']);
         $this->assertStringNotContainsString('Exception', $json['message']);
     }
@@ -31,7 +31,7 @@ class SecureLoggingAndErrorHandlingTest extends TestCase
             ->atLeast()->once()
             ->with(null)
             ->andReturnSelf();
-        
+
         Log::shouldReceive('info')
             ->atLeast()->once();
 

@@ -28,7 +28,7 @@ class CancelAndStatusEndpointTest extends TestCase
 
         $statusResponse = $this->getJson("/api/chunks/status/{$sessionId}");
         $statusResponse->assertStatus(404)
-            ->assertJson(['message' => 'Session status not found.']);
+            ->assertJson(['message' => 'Upload session not found.']);
     }
 
     public function test_status_returns_404_for_non_existent_session(): void

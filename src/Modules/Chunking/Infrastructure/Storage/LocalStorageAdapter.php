@@ -6,20 +6,22 @@ namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage;
 
 use Illuminate\Support\Facades\Storage;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use RuntimeException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIntegrityException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\StorageFailureException;
 
 final class LocalStorageAdapter implements FileStorageInterface
 {
     private function getDiskName(): string
     {
         $disk = config('stateful-chunking.storage_disk', 'local');
+
         return is_string($disk) ? $disk : 'local';
     }
 
     private function getBaseStoragePath(): string
     {
         $path = config('stateful-chunking.storage_path', 'uploads');
+
         return is_string($path) ? $path : 'uploads';
     }
 
@@ -36,9 +38,10 @@ final class LocalStorageAdapter implements FileStorageInterface
         $computedHash = hash('sha256', $content);
 
         if (strlen($chunkHash) >= 8 && strlen($chunkHash) === 64) {
-            if (!hash_equals(strtolower($chunkHash), strtolower($computedHash))) {
-                throw new RuntimeException(
-                    sprintf('Chunk %d integrity check failed: SHA-256 hash mismatch.', $chunkIndex)
+            if (! hash_equals(strtolower($chunkHash), strtolower($computedHash))) {
+                throw new ChunkIntegrityException(
+                    sprintf('Chunk %d integrity check failed: SHA-256 hash mismatch.', $chunkIndex),
+                    ['session_id' => $sessionId, 'chunk_index' => $chunkIndex]
                 );
             }
         }
@@ -62,13 +65,16 @@ final class LocalStorageAdapter implements FileStorageInterface
         $tempFiles = [];
         for ($i = 0; $i < $totalChunks; $i++) {
             $chunkRelativePath = $this->chunkPath($sessionId, $i);
-            if (!$disk->exists($chunkRelativePath)) {
-                throw new RuntimeException(sprintf('Missing chunk %d for reassembly.', $i));
+            if (! $disk->exists($chunkRelativePath)) {
+                throw new StorageFailureException(
+                    sprintf('Missing chunk %d for reassembly.', $i),
+                    ['session_id' => $sessionId, 'chunk_index' => $i]
+                );
             }
             try {
                 $tempFiles[] = $disk->path($chunkRelativePath);
             } catch (\Throwable $e) {
-                throw new RuntimeException(
+                throw new StorageFailureException(
                     sprintf(
                         "Storage disk '%s' does not support local filesystem paths. The staging area requires a local disk driver (e.g. 'local'). For remote storage (S3/GCS), use the Staged Upload Pattern to stream the staged file to its permanent destination.",
                         $this->getDiskName()
@@ -81,7 +87,7 @@ final class LocalStorageAdapter implements FileStorageInterface
         try {
             $fullAbsolutePath = $disk->path($finalRelativePath);
         } catch (\Throwable $e) {
-            throw new RuntimeException(
+            throw new StorageFailureException(
                 sprintf(
                     "Storage disk '%s' does not support local filesystem paths. The staging area requires a local disk driver (e.g. 'local'). For remote storage (S3/GCS), use the Staged Upload Pattern to stream the staged file to its permanent destination.",
                     $this->getDiskName()
@@ -90,20 +96,26 @@ final class LocalStorageAdapter implements FileStorageInterface
             );
         }
         $dirPath = dirname($fullAbsolutePath);
-        if (!is_dir($dirPath)) {
+        if (! is_dir($dirPath)) {
             mkdir($dirPath, 0755, true);
         }
 
         $destStream = fopen($fullAbsolutePath, 'wb');
-        if (!$destStream) {
-            throw new RuntimeException('Failed to open destination stream for file reassembly.');
+        if (! $destStream) {
+            throw new StorageFailureException(
+                'Failed to open destination stream for file reassembly.',
+                ['session_id' => $sessionId]
+            );
         }
 
         try {
             foreach ($tempFiles as $chunkFile) {
                 $srcStream = fopen($chunkFile, 'rb');
-                if (!$srcStream) {
-                    throw new RuntimeException(sprintf('Failed to open chunk stream for file: %s', $chunkFile));
+                if (! $srcStream) {
+                    throw new StorageFailureException(
+                        sprintf('Failed to open chunk stream for file: %s', $chunkFile),
+                        ['session_id' => $sessionId]
+                    );
                 }
                 try {
                     stream_copy_to_stream($srcStream, $destStream);
@@ -121,9 +133,12 @@ final class LocalStorageAdapter implements FileStorageInterface
         // Validate assembled file SHA-256 hash if expected hash is provided
         if (strlen($expectedTotalHash) === 64) {
             $assembledHash = hash_file('sha256', $fullAbsolutePath);
-            if (!is_string($assembledHash) || !hash_equals(strtolower($expectedTotalHash), strtolower($assembledHash))) {
+            if (! is_string($assembledHash) || ! hash_equals(strtolower($expectedTotalHash), strtolower($assembledHash))) {
                 @unlink($fullAbsolutePath);
-                throw new RuntimeException('Assembled file SHA-256 hash mismatch');
+                throw new ChunkIntegrityException(
+                    'Assembled file SHA-256 hash mismatch.',
+                    ['session_id' => $sessionId]
+                );
             }
         }
 

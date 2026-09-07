@@ -33,14 +33,14 @@ class Vuln11ChunkIdempotencyRegressionTest extends TestCase
     {
         $chunk0Data = 'FIRST_CHUNK_DATA_12345';
         $chunk1Data = 'SECOND_CHUNK_DATA_67890';
-        $totalData = $chunk0Data . $chunk1Data;
+        $totalData = $chunk0Data.$chunk1Data;
 
         $response = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'idempotency_test.txt',
-            'file_size'    => strlen($totalData),
+            'file_name' => 'idempotency_test.txt',
+            'file_size' => strlen($totalData),
             'total_chunks' => 2,
-            'total_hash'   => hash('sha256', $totalData),
-            'fingerprint'  => 'idemp_fp_' . uniqid(),
+            'total_hash' => hash('sha256', $totalData),
+            'fingerprint' => 'idemp_fp_'.uniqid(),
         ]);
 
         $response->assertStatus(201);
@@ -60,9 +60,9 @@ class Vuln11ChunkIdempotencyRegressionTest extends TestCase
         // First upload of chunk 0
         $file1 = UploadedFile::fake()->createWithContent('chunk_0.tmp', $chunk0Data);
         $res1 = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $chunk0Hash,
+            'chunk_hash' => $chunk0Hash,
         ], [], ['file' => $file1], ['HTTP_ACCEPT' => 'application/json']);
 
         $res1->assertStatus(200);
@@ -79,9 +79,9 @@ class Vuln11ChunkIdempotencyRegressionTest extends TestCase
         // Second upload of chunk 0 (Network retry or duplicate request)
         $file2 = UploadedFile::fake()->createWithContent('chunk_0.tmp', $chunk0Data);
         $res2 = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $chunk0Hash,
+            'chunk_hash' => $chunk0Hash,
         ], [], ['file' => $file2], ['HTTP_ACCEPT' => 'application/json']);
 
         $res2->assertStatus(200);
@@ -102,9 +102,9 @@ class Vuln11ChunkIdempotencyRegressionTest extends TestCase
         // Upload chunk 0 first time normally
         $file1 = UploadedFile::fake()->createWithContent('chunk_0.tmp', $chunk0Data);
         $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $chunk0Hash,
+            'chunk_hash' => $chunk0Hash,
         ], [], ['file' => $file1], ['HTTP_ACCEPT' => 'application/json']);
 
         // Now mock FileStorageInterface to assert storeChunk is NEVER called on retry
@@ -114,9 +114,9 @@ class Vuln11ChunkIdempotencyRegressionTest extends TestCase
 
         $file2 = UploadedFile::fake()->createWithContent('chunk_0.tmp', $chunk0Data);
         $res2 = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $chunk0Hash,
+            'chunk_hash' => $chunk0Hash,
         ], [], ['file' => $file2], ['HTTP_ACCEPT' => 'application/json']);
 
         $res2->assertStatus(200);
@@ -133,19 +133,20 @@ class Vuln11ChunkIdempotencyRegressionTest extends TestCase
         // Upload chunk 0 first time normally
         $file1 = UploadedFile::fake()->createWithContent('chunk_0.tmp', $chunk0Data);
         $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $chunk0Hash,
+            'chunk_hash' => $chunk0Hash,
         ], [], ['file' => $file1], ['HTTP_ACCEPT' => 'application/json']);
 
         // Now attempt to retry chunk 0 with tampered content (mismatched hash)
         $tamperedFile = UploadedFile::fake()->createWithContent('chunk_0.tmp', 'TAMPERED_CONTENT');
         $resTampered = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $chunk0Hash, // claims original hash, but content differs
+            'chunk_hash' => $chunk0Hash, // claims original hash, but content differs
         ], [], ['file' => $tamperedFile], ['HTTP_ACCEPT' => 'application/json']);
 
-        $resTampered->assertStatus(400);
+        // Integrity failures are now a typed domain exception mapped to 422.
+        $resTampered->assertStatus(422);
     }
 }

@@ -13,4 +13,4 @@ docker-compose.yml
 testbench.yaml
 /scratch/
 /docs/proposals/
-
+/.claude
