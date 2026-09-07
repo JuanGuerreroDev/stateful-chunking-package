@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories;
 
+use Illuminate\Cache\Repository;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Support\Facades\Cache;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 
@@ -18,6 +20,7 @@ final class CacheStateRepository implements StateRepositoryInterface
         $store = config('stateful-chunking.cache_store')
             ?: config('stateful-chunking.driver')
             ?: config('cache.default');
+
         return is_string($store) ? $store : null;
     }
 
@@ -45,6 +48,7 @@ final class CacheStateRepository implements StateRepositoryInterface
             'session_id' => $session->sessionId->value,
             'file_name' => $session->fileName,
             'file_size' => $session->fileSize,
+            'uploaded_bytes' => $session->uploadedBytes,
             'total_chunks' => $session->totalChunks,
             'total_hash' => $session->totalHash->value,
             'fingerprint' => $session->fingerprint,
@@ -57,7 +61,7 @@ final class CacheStateRepository implements StateRepositoryInterface
 
         $store->put($this->sessionKey($session->sessionId->value), $sessionData, $ttl);
 
-        if (!empty($session->fingerprint)) {
+        if (! empty($session->fingerprint)) {
             $store->put($this->fingerprintKey($session->fingerprint), $session->sessionId->value, $ttl);
         }
     }
@@ -67,7 +71,7 @@ final class CacheStateRepository implements StateRepositoryInterface
         $store = Cache::store($this->getStoreName());
         $sessionData = $store->get($this->sessionKey($sessionId));
 
-        if (!is_array($sessionData)) {
+        if (! is_array($sessionData)) {
             return null;
         }
 
@@ -81,6 +85,7 @@ final class CacheStateRepository implements StateRepositoryInterface
         $rawSessionId = isset($sessionData['session_id']) && is_string($sessionData['session_id']) ? $sessionData['session_id'] : '';
         $rawFileName = isset($sessionData['file_name']) && is_string($sessionData['file_name']) ? $sessionData['file_name'] : '';
         $rawFileSize = isset($sessionData['file_size']) && is_numeric($sessionData['file_size']) ? (int) $sessionData['file_size'] : 0;
+        $rawUploadedBytes = isset($sessionData['uploaded_bytes']) && is_numeric($sessionData['uploaded_bytes']) ? (int) $sessionData['uploaded_bytes'] : 0;
         $rawTotalChunks = isset($sessionData['total_chunks']) && is_numeric($sessionData['total_chunks']) ? (int) $sessionData['total_chunks'] : 0;
         $rawTotalHash = isset($sessionData['total_hash']) && is_string($sessionData['total_hash']) ? $sessionData['total_hash'] : '';
         $rawFingerprint = isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) ? $sessionData['fingerprint'] : '';
@@ -100,11 +105,13 @@ final class CacheStateRepository implements StateRepositoryInterface
             chunksMap: $chunksMap,
             createdAt: $rawCreatedAt,
             expiresAt: $rawExpiresAt,
-            ownerId: $rawOwnerId
+            ownerId: $rawOwnerId,
+            uploadedBytes: $rawUploadedBytes
         );
 
         if ($session->isExpired()) {
             $this->deleteSession($sessionId);
+
             return null;
         }
 
@@ -120,39 +127,50 @@ final class CacheStateRepository implements StateRepositoryInterface
         $store = Cache::store($this->getStoreName());
         $sessionId = $store->get($this->fingerprintKey($fingerprint));
 
-        if (!is_string($sessionId) && !is_numeric($sessionId)) {
+        if (! is_string($sessionId) && ! is_numeric($sessionId)) {
             return null;
         }
 
         return $this->getSession((string) $sessionId);
     }
 
-    public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status): void
+    public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status, ?int $chunkBytes = null): void
     {
-        $store = Cache::store($this->getStoreName());
-
-        $mutate = function () use ($sessionId, $chunkIndex, $status): void {
+        $this->withSessionLock($sessionId, function () use ($sessionId, $chunkIndex, $status, $chunkBytes): void {
             $session = $this->getSession($sessionId);
-            if (!$session) {
+            if (! $session) {
                 return;
             }
 
             if ($status === 'completed') {
+                $alreadyCompleted = ($session->chunksMap[$chunkIndex] ?? null) === 'completed';
                 $session->markChunkCompleted($chunkIndex);
+
+                // Count bytes only on the first completion of a chunk, so idempotent
+                // re-uploads never inflate the cumulative total.
+                if (! $alreadyCompleted && $chunkBytes !== null) {
+                    $session->recordUploadedBytes($chunkBytes);
+                }
             } else {
                 $session->chunksMap[$chunkIndex] = $status;
             }
 
             $this->saveSession($session);
-        };
+        });
+    }
 
-        if ($store->getStore() instanceof \Illuminate\Contracts\Cache\LockProvider) {
-            /** @var \Illuminate\Cache\Repository&\Illuminate\Contracts\Cache\LockProvider $storeWithLock */
+    public function withSessionLock(string $sessionId, callable $callback): mixed
+    {
+        $store = Cache::store($this->getStoreName());
+
+        if ($store->getStore() instanceof LockProvider) {
+            /** @var Repository&LockProvider $storeWithLock */
             $storeWithLock = $store;
-            $storeWithLock->lock($this->lockKey($sessionId), 10)->block(5, $mutate);
-        } else {
-            $this->executeWithFallbackFileLock($sessionId, $mutate);
+
+            return $storeWithLock->lock($this->lockKey($sessionId), 10)->block(5, $callback);
         }
+
+        return $this->executeWithFallbackFileLock($sessionId, $callback);
     }
 
     private function getFallbackLockPath(string $sessionId): string
@@ -160,14 +178,13 @@ final class CacheStateRepository implements StateRepositoryInterface
         return sprintf('%s/chunk_lock_%s.lock', sys_get_temp_dir(), md5($sessionId));
     }
 
-    private function executeWithFallbackFileLock(string $sessionId, callable $callback): void
+    private function executeWithFallbackFileLock(string $sessionId, callable $callback): mixed
     {
         $lockPath = $this->getFallbackLockPath($sessionId);
         $fp = fopen($lockPath, 'c+');
 
-        if (!$fp) {
-            $callback();
-            return;
+        if (! $fp) {
+            return $callback();
         }
 
         try {
@@ -182,11 +199,11 @@ final class CacheStateRepository implements StateRepositoryInterface
                 usleep(25000);
             }
 
-            if (!$locked) {
+            if (! $locked) {
                 flock($fp, LOCK_EX);
             }
 
-            $callback();
+            return $callback();
         } finally {
             flock($fp, LOCK_UN);
             fclose($fp);
@@ -198,7 +215,7 @@ final class CacheStateRepository implements StateRepositoryInterface
         $store = Cache::store($this->getStoreName());
         $sessionData = $store->get($this->sessionKey($sessionId));
 
-        if (is_array($sessionData) && isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) && !empty($sessionData['fingerprint'])) {
+        if (is_array($sessionData) && isset($sessionData['fingerprint']) && is_string($sessionData['fingerprint']) && ! empty($sessionData['fingerprint'])) {
             $store->forget($this->fingerprintKey($sessionData['fingerprint']));
         }
 

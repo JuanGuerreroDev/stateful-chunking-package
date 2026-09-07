@@ -24,6 +24,20 @@ final class ReassembleFileAction
      */
     public function handle(string $sessionId): array
     {
+        // Serialise reassembly per session: two concurrent /complete calls must not
+        // both pass the isComplete() check and reassemble (and mint tokens) twice.
+        // The second caller waits, then finds the session already consumed -> 404.
+        /** @var array<string, mixed> $result */
+        $result = $this->repository->withSessionLock($sessionId, fn (): array => $this->reassemble($sessionId));
+
+        return $result;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function reassemble(string $sessionId): array
+    {
         $session = $this->repository->getSession($sessionId);
         if (! $session) {
             throw new SessionNotFoundException(
