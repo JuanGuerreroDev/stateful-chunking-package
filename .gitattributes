@@ -1,0 +1,18 @@
+# Normalize line endings to LF in the repository, regardless of the
+# contributor's OS (prevents CRLF noise in diffs and CI on Windows).
+* text=auto eol=lf
+
+# Keep development-only paths out of the distributed package
+# (`composer install --prefer-dist` archives), so consumers download
+# only runtime code.
+/tests            export-ignore
+/.github          export-ignore
+/docs             export-ignore
+/scratch          export-ignore
+.gitattributes    export-ignore
+.gitignore        export-ignore
+.editorconfig     export-ignore
+phpstan.neon      export-ignore
+phpunit.xml.dist  export-ignore
+testbench.yaml    export-ignore
+pint.json         export-ignore
