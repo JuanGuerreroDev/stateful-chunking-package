@@ -25,6 +25,9 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingExcepti
  * the assembled file's server path, unless `expose_server_paths` is enabled. This
  * keeps the PII / path-disclosure policy in one place rather than scattered across
  * the controller's action methods.
+ *
+ * ADR: Adopt an immutable response envelope for the Chunking HTTP API.
+ * See: docs/decisions/0002-adopt-immutable-response-envelope.md
  */
 final class ChunkingResponse implements Responsable
 {
