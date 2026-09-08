@@ -21,9 +21,9 @@ class FileDriverFeatureTest extends TestCase
 
     public function test_file_cache_driver_persists_session_and_completes_upload(): void
     {
-        $chunk0Data = "FILE DRIVER TEST CHUNK 0 - MULTI-DRIVER ARCHITECTURE TEST.";
-        $chunk1Data = "FILE DRIVER TEST CHUNK 1 - RESILIENT STATE PERSISTED ON DISK.";
-        $fullContent = $chunk0Data . $chunk1Data;
+        $chunk0Data = 'FILE DRIVER TEST CHUNK 0 - MULTI-DRIVER ARCHITECTURE TEST.';
+        $chunk1Data = 'FILE DRIVER TEST CHUNK 1 - RESILIENT STATE PERSISTED ON DISK.';
+        $fullContent = $chunk0Data.$chunk1Data;
 
         $chunk0Hash = hash('sha256', $chunk0Data);
         $chunk1Hash = hash('sha256', $chunk1Data);
@@ -35,7 +35,7 @@ class FileDriverFeatureTest extends TestCase
             'file_size' => strlen($fullContent),
             'total_chunks' => 2,
             'total_hash' => $totalHash,
-            'fingerprint' => 'file_driver_fp_' . time(),
+            'fingerprint' => 'file_driver_fp_'.time(),
         ]);
 
         $initiateResponse->assertStatus(201);
@@ -87,7 +87,7 @@ class FileDriverFeatureTest extends TestCase
             'file_size' => 1024,
             'total_chunks' => 2,
             'total_hash' => hash('sha256', 'dummy'),
-            'fingerprint' => 'file_cancel_fp_' . time(),
+            'fingerprint' => 'file_cancel_fp_'.time(),
         ]);
 
         $initiateResponse->assertStatus(201);

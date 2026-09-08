@@ -1,10 +1,10 @@
 <?php
 
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 
 test('ClearStaleSessionsCommand executes successfully', function () {
     $this->artisan('stateful-chunking:clear-stale')

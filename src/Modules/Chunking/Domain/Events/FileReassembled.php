@@ -12,7 +12,7 @@ final class FileReassembled
     use Dispatchable, SerializesModels;
 
     /**
-     * @param array<string, mixed> $reassemblyData
+     * @param  array<string, mixed>  $reassemblyData
      */
     public function __construct(
         public readonly string $sessionId,

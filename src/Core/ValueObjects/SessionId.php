@@ -15,7 +15,7 @@ final readonly class SessionId
     {
         $id = $value ?? Str::uuid()->toString();
 
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+        if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
             throw new InvalidArgumentException('SessionId must be a valid UUID v4 string.');
         }
 
@@ -24,7 +24,7 @@ final readonly class SessionId
 
     public static function generate(): self
     {
-        return new self();
+        return new self;
     }
 
     public static function fromString(string $id): self

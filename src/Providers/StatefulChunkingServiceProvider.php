@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Console\Commands\ClearStaleSessionsCommand;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
-use Juanoecr\StatefulChunking\Console\Commands\ClearStaleSessionsCommand;
 
 final class StatefulChunkingServiceProvider extends ServiceProvider
 {
@@ -19,7 +23,7 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../../config/stateful-chunking.php',
+            __DIR__.'/../../config/stateful-chunking.php',
             'stateful-chunking'
         );
 
@@ -27,11 +31,11 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
         $this->app->bind(FileStorageInterface::class, LocalStorageAdapter::class);
 
         $this->app->singleton(
-            \Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class,
-            fn () => new \Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService()
+            StatefulChunkingService::class,
+            fn () => new StatefulChunkingService
         );
         $this->app->alias(
-            \Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class,
+            StatefulChunkingService::class,
             'stateful-chunking.service'
         );
     }
@@ -43,7 +47,7 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../../config/stateful-chunking.php' => config_path('stateful-chunking.php'),
+                __DIR__.'/../../config/stateful-chunking.php' => config_path('stateful-chunking.php'),
             ], 'stateful-chunking-config');
 
             $this->commands([
@@ -53,7 +57,7 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
 
         if (config('stateful-chunking.routes.enabled', true)) {
             $this->configureRateLimiting();
-            $this->loadRoutesFrom(__DIR__ . '/../../routes/api.php');
+            $this->loadRoutesFrom(__DIR__.'/../../routes/api.php');
         }
     }
 
@@ -62,47 +66,48 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
-        if (!config('stateful-chunking.rate_limits.enabled', true)) {
+        if (! config('stateful-chunking.rate_limits.enabled', true)) {
             return;
         }
 
-        $resolveKey = function (\Illuminate\Http\Request $request): string {
+        $resolveKey = function (Request $request): string {
             $user = $request->user();
             if (is_object($user) && property_exists($user, 'id') && (is_string($user->id) || is_int($user->id))) {
                 return (string) $user->id;
             }
+
             return $request->ip() ?? '127.0.0.1';
         };
 
         $getConfigLimit = function (string $key, int $default): int {
             $val = config("stateful-chunking.rate_limits.{$key}", $default);
+
             return is_numeric($val) ? (int) $val : $default;
         };
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-initiate', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('initiate', 10))
+        RateLimiter::for('stateful-chunking-initiate', function (Request $request) use ($resolveKey, $getConfigLimit) {
+            return Limit::perMinute($getConfigLimit('initiate', 10))
                 ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-upload', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('upload', 120))
+        RateLimiter::for('stateful-chunking-upload', function (Request $request) use ($resolveKey, $getConfigLimit) {
+            return Limit::perMinute($getConfigLimit('upload', 120))
                 ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-status', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('status', 60))
+        RateLimiter::for('stateful-chunking-status', function (Request $request) use ($resolveKey, $getConfigLimit) {
+            return Limit::perMinute($getConfigLimit('status', 60))
                 ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-complete', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('complete', 20))
+        RateLimiter::for('stateful-chunking-complete', function (Request $request) use ($resolveKey, $getConfigLimit) {
+            return Limit::perMinute($getConfigLimit('complete', 20))
                 ->by($resolveKey($request));
         });
 
-        \Illuminate\Support\Facades\RateLimiter::for('stateful-chunking-cancel', function (\Illuminate\Http\Request $request) use ($resolveKey, $getConfigLimit) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute($getConfigLimit('cancel', 20))
+        RateLimiter::for('stateful-chunking-cancel', function (Request $request) use ($resolveKey, $getConfigLimit) {
+            return Limit::perMinute($getConfigLimit('cancel', 20))
                 ->by($resolveKey($request));
         });
     }
 }
-

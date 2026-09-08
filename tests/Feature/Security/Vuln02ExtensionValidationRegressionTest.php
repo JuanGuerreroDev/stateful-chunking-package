@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
 
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 use Juanoecr\StatefulChunking\Tests\TestCase;
 
 /**
@@ -30,19 +32,17 @@ class Vuln02ExtensionValidationRegressionTest extends TestCase
 
     /**
      * Helper to initiate an upload session with a given filename.
-     *
-     * @return \Illuminate\Testing\TestResponse
      */
-    private function attemptInitiate(string $fileName): \Illuminate\Testing\TestResponse
+    private function attemptInitiate(string $fileName): TestResponse
     {
-        \Illuminate\Support\Facades\RateLimiter::clear('stateful-chunking-initiate');
+        RateLimiter::clear('stateful-chunking-initiate');
 
         return $this->postJson('/api/chunks/initiate', [
-            'file_name'    => $fileName,
-            'file_size'    => 1024,
+            'file_name' => $fileName,
+            'file_size' => 1024,
             'total_chunks' => 1,
-            'total_hash'   => hash('sha256', 'dummy_content_for_regression_test'),
-            'fingerprint'  => 'reg_fp_' . uniqid(),
+            'total_hash' => hash('sha256', 'dummy_content_for_regression_test'),
+            'fingerprint' => 'reg_fp_'.uniqid(),
         ]);
     }
 

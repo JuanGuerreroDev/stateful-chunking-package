@@ -15,16 +15,16 @@ class RedisDriverFeatureTest extends TestCase
     {
         parent::setUp();
 
-        if (!extension_loaded('redis')) {
+        if (! extension_loaded('redis')) {
             $this->markTestSkipped('Redis extension is not loaded.');
         }
 
         try {
-            $r = new \Redis();
+            $r = new \Redis;
             $r->connect('127.0.0.1', 6379, 1.5);
             $r->ping();
         } catch (\Throwable $e) {
-            $this->markTestSkipped('Redis server is not reachable: ' . $e->getMessage());
+            $this->markTestSkipped('Redis server is not reachable: '.$e->getMessage());
         }
 
         config()->set('cache.default', 'redis');
@@ -43,14 +43,14 @@ class RedisDriverFeatureTest extends TestCase
 
     public function test_redis_cache_driver_persists_session_and_completes_upload(): void
     {
-        $chunk0Data = "REDIS DRIVER TEST CHUNK 0 - HIGH PERFORMANCE IN-MEMORY CACHE.";
-        $chunk1Data = "REDIS DRIVER TEST CHUNK 1 - ATOMIC DISTRIBUTED LOCKS IN REDIS.";
-        $fullContent = $chunk0Data . $chunk1Data;
+        $chunk0Data = 'REDIS DRIVER TEST CHUNK 0 - HIGH PERFORMANCE IN-MEMORY CACHE.';
+        $chunk1Data = 'REDIS DRIVER TEST CHUNK 1 - ATOMIC DISTRIBUTED LOCKS IN REDIS.';
+        $fullContent = $chunk0Data.$chunk1Data;
 
         $chunk0Hash = hash('sha256', $chunk0Data);
         $chunk1Hash = hash('sha256', $chunk1Data);
         $totalHash = hash('sha256', $fullContent);
-        $fingerprint = 'redis_driver_fp_' . time();
+        $fingerprint = 'redis_driver_fp_'.time();
 
         // 1. Initiate upload session
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
@@ -108,7 +108,7 @@ class RedisDriverFeatureTest extends TestCase
 
     public function test_redis_cache_driver_purges_state_on_cancellation(): void
     {
-        $fingerprint = 'redis_cancel_fp_' . time();
+        $fingerprint = 'redis_cancel_fp_'.time();
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
             'file_name' => 'to_cancel_redis.txt',
             'file_size' => 1024,

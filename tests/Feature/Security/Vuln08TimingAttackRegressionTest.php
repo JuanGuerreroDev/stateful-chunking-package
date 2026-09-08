@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
 
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +37,7 @@ class Vuln08TimingAttackRegressionTest extends TestCase
         RateLimiter::clear('stateful-chunking-upload');
         RateLimiter::clear('stateful-chunking-complete');
 
-        $this->storageAdapter = new LocalStorageAdapter();
+        $this->storageAdapter = new LocalStorageAdapter;
     }
 
     /**
@@ -46,7 +45,7 @@ class Vuln08TimingAttackRegressionTest extends TestCase
      */
     public function test_chunk_hash_comparison_accepts_valid_hash_case_insensitively(): void
     {
-        $sessionId = 'test_session_' . uniqid();
+        $sessionId = 'test_session_'.uniqid();
         $content = 'CONSTANT TIME VERIFIED CHUNK DATA';
         $validHash = hash('sha256', $content);
 
@@ -63,7 +62,7 @@ class Vuln08TimingAttackRegressionTest extends TestCase
      */
     public function test_tampered_chunk_hash_is_rejected(): void
     {
-        $sessionId = 'test_session_' . uniqid();
+        $sessionId = 'test_session_'.uniqid();
         $content = 'AUTHENTIC CONTENT';
         $tamperedHash = hash('sha256', 'CORRUPTED CONTENT');
 
@@ -78,7 +77,7 @@ class Vuln08TimingAttackRegressionTest extends TestCase
      */
     public function test_assembled_file_hash_accepts_valid_hash_case_insensitively(): void
     {
-        $sessionId = 'test_session_' . uniqid();
+        $sessionId = 'test_session_'.uniqid();
         $content = 'FULL ASSEMBLED CONTENT VERIFICATION';
         $validTotalHash = hash('sha256', $content);
 
@@ -103,7 +102,7 @@ class Vuln08TimingAttackRegressionTest extends TestCase
      */
     public function test_assembled_file_hash_mismatch_throws_and_deletes_file(): void
     {
-        $sessionId = 'test_session_' . uniqid();
+        $sessionId = 'test_session_'.uniqid();
         $content = 'UNEXPECTED CONTENT';
         $actualHash = hash('sha256', $content);
         $wrongExpectedHash = hash('sha256', 'DIFFERENT EXPECTED CONTENT');

@@ -10,7 +10,7 @@ test('LocalStorageAdapter stores chunk and validates checksum correctly', functi
     config()->set('stateful-chunking.storage_disk', 'local');
     config()->set('stateful-chunking.storage_path', 'uploads');
 
-    $adapter = new LocalStorageAdapter();
+    $adapter = new LocalStorageAdapter;
     $content = 'Chunk test binary content';
     $hash = hash('sha256', $content);
 
@@ -24,11 +24,11 @@ test('LocalStorageAdapter throws exception on chunk hash mismatch', function () 
     Storage::fake('local');
     config()->set('stateful-chunking.storage_disk', 'local');
 
-    $adapter = new LocalStorageAdapter();
+    $adapter = new LocalStorageAdapter;
     $content = 'Chunk content';
     $invalidHash = str_repeat('a', 64);
 
-    expect(fn() => $adapter->storeChunk('test-sess-2', 0, $content, $invalidHash))
+    expect(fn () => $adapter->storeChunk('test-sess-2', 0, $content, $invalidHash))
         ->toThrow(RuntimeException::class, 'Chunk 0 integrity check failed: SHA-256 hash mismatch.');
 });
 
@@ -36,8 +36,8 @@ test('LocalStorageAdapter throws descriptive exception on missing chunk during r
     Storage::fake('local');
     config()->set('stateful-chunking.storage_disk', 'local');
 
-    $adapter = new LocalStorageAdapter();
+    $adapter = new LocalStorageAdapter;
 
-    expect(fn() => $adapter->reassembleFile('non-existent-sess', 'file.bin', 2, 'dummy-hash'))
+    expect(fn () => $adapter->reassembleFile('non-existent-sess', 'file.bin', 2, 'dummy-hash'))
         ->toThrow(RuntimeException::class, 'Missing chunk 0 for reassembly.');
 });

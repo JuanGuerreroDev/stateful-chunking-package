@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs;
 
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 
 final class UploadChunkDTO
 {
@@ -17,7 +17,7 @@ final class UploadChunkDTO
     ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public static function fromArray(array $data, string $content): self
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
 
+use Illuminate\Http\UploadedFile;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Tests\TestCase;
 use RuntimeException;
@@ -25,11 +26,11 @@ class Vuln10ExceptionLeakRegressionTest extends TestCase
     private function validInitiatePayload(): array
     {
         return [
-            'file_name'    => 'safe_file.txt',
-            'file_size'    => 1024,
+            'file_name' => 'safe_file.txt',
+            'file_size' => 1024,
             'total_chunks' => 1,
-            'total_hash'   => str_repeat('a', 64),
-            'fingerprint'  => 'fp_' . uniqid(),
+            'total_hash' => str_repeat('a', 64),
+            'fingerprint' => 'fp_'.uniqid(),
         ];
     }
 
@@ -68,14 +69,14 @@ class Vuln10ExceptionLeakRegressionTest extends TestCase
             ->willThrowException(new RuntimeException("Connection rejected reading {$sensitivePath}"));
         $this->app->instance(StateRepositoryInterface::class, $repoMock);
 
-        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('chunk_0.tmp', 'dummy chunk content');
+        $file = UploadedFile::fake()->createWithContent('chunk_0.tmp', 'dummy chunk content');
         $response = $this->call(
             'POST',
             '/api/chunks/upload',
             [
-                'session_id'  => self::VALID_UUID,
+                'session_id' => self::VALID_UUID,
                 'chunk_index' => 0,
-                'chunk_hash'  => hash('sha256', 'dummy chunk content'),
+                'chunk_hash' => hash('sha256', 'dummy chunk content'),
             ],
             [],
             ['file' => $file],
@@ -128,7 +129,7 @@ class Vuln10ExceptionLeakRegressionTest extends TestCase
             ->willThrowException(new RuntimeException("Cluster communication lost at {$sensitivePath}"));
         $this->app->instance(StateRepositoryInterface::class, $repoMock);
 
-        $response = $this->deleteJson('/api/chunks/cancel/' . self::VALID_UUID);
+        $response = $this->deleteJson('/api/chunks/cancel/'.self::VALID_UUID);
 
         $this->assertContains($response->status(), [400, 500], "Expected 400 or 500 status on internal error, got {$response->status()}");
         $json = $response->json();

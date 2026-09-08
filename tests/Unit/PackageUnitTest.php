@@ -1,8 +1,8 @@
 <?php
 
+use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkSize;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 
 test('Package ChunkSize validates multiples of 256 KB', function () {
     $size = new ChunkSize(2097152); // 2 MB
@@ -37,7 +37,7 @@ test('Package SessionId generates and compares valid UUID v4', function () {
 
 test('Package ChunkHash formats valid SHA-256 hash correctly', function () {
     $validHash = 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855';
-    $hash = ChunkHash::fromString('  ' . $validHash . '  ');
+    $hash = ChunkHash::fromString('  '.$validHash.'  ');
     expect((string) $hash)->toBe(strtolower($validHash));
 
     $sameHash = ChunkHash::fromString($validHash);

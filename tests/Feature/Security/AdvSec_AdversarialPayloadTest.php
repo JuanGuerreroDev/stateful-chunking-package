@@ -45,14 +45,14 @@ class AdvSec_AdversarialPayloadTest extends TestCase
 
         // 10 MB payload - 5x the limit
         $oversizedPayload = str_repeat('A', 10 * 1024 * 1024);
-        $payloadHash      = hash('sha256', $oversizedPayload);
+        $payloadHash = hash('sha256', $oversizedPayload);
 
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'attack_raw_body.bin',
-            'file_size'    => strlen($oversizedPayload),
+            'file_name' => 'attack_raw_body.bin',
+            'file_size' => strlen($oversizedPayload),
             'total_chunks' => 5,
-            'total_hash'   => $payloadHash,
-            'fingerprint'  => 'adv001_' . uniqid(),
+            'total_hash' => $payloadHash,
+            'fingerprint' => 'adv001_'.uniqid(),
         ]);
         $initiateResponse->assertStatus(201);
         $sessionId = (string) $initiateResponse->json('data.session_id');
@@ -61,12 +61,12 @@ class AdvSec_AdversarialPayloadTest extends TestCase
 
         $response = $this->call(
             method: 'POST',
-            uri: '/api/chunks/upload?session_id=' . $sessionId . '&chunk_index=0&chunk_hash=' . $payloadHash,
+            uri: '/api/chunks/upload?session_id='.$sessionId.'&chunk_index=0&chunk_hash='.$payloadHash,
             parameters: [],
             cookies: [],
             files: [],
             server: [
-                'CONTENT_TYPE'   => 'application/octet-stream',
+                'CONTENT_TYPE' => 'application/octet-stream',
                 'CONTENT_LENGTH' => (string) strlen($oversizedPayload),
             ],
             content: $oversizedPayload
@@ -97,13 +97,13 @@ class AdvSec_AdversarialPayloadTest extends TestCase
      */
     public function test_vuln_sec_004_short_hash_bypasses_integrity_check_in_store_chunk(): void
     {
-        $adapter   = new LocalStorageAdapter();
+        $adapter = new LocalStorageAdapter;
         $sessionId = 'adv004-test-session-id-bypass-01';
-        $content   = 'Legitimate chunk content for bypass test.';
+        $content = 'Legitimate chunk content for bypass test.';
 
-        $wrongContent   = 'Completely different content that does not match.';
+        $wrongContent = 'Completely different content that does not match.';
         $mismatchedHash = hash('sha256', $wrongContent);
-        $truncatedHash  = substr($mismatchedHash, 0, 32); // 32 chars - triggers the bypass
+        $truncatedHash = substr($mismatchedHash, 0, 32); // 32 chars - triggers the bypass
 
         // With truncated 32-char hash: no exception thrown (bypass confirmed)
         $path = $adapter->storeChunk($sessionId, 0, $content, $truncatedHash);
@@ -120,9 +120,9 @@ class AdvSec_AdversarialPayloadTest extends TestCase
      */
     public function test_vuln_sec_004_valid_64_char_mismatched_hash_throws_exception(): void
     {
-        $adapter   = new LocalStorageAdapter();
+        $adapter = new LocalStorageAdapter;
         $sessionId = 'adv004-test-session-id-control-01';
-        $content   = 'Legitimate content for control test.';
+        $content = 'Legitimate content for control test.';
         $wrongHash = hash('sha256', 'completely different content');
 
         $this->expectException(\RuntimeException::class);
@@ -141,10 +141,10 @@ class AdvSec_AdversarialPayloadTest extends TestCase
      */
     public function test_vuln_sec_005_short_total_hash_bypasses_reassembly_integrity_check(): void
     {
-        $adapter    = new LocalStorageAdapter();
-        $sessionId  = 'adv005-bypass-session-00000000001';
-        $content    = 'Single chunk content for reassembly bypass test.';
-        $realHash   = hash('sha256', $content);
+        $adapter = new LocalStorageAdapter;
+        $sessionId = 'adv005-bypass-session-00000000001';
+        $content = 'Single chunk content for reassembly bypass test.';
+        $realHash = hash('sha256', $content);
 
         $adapter->storeChunk($sessionId, 0, $content, $realHash);
 
@@ -170,17 +170,17 @@ class AdvSec_AdversarialPayloadTest extends TestCase
      */
     public function test_vuln_sec_003_fingerprint_reuse_returns_non_pending_session(): void
     {
-        $fingerprint = 'adv003-fingerprint-reuse-' . uniqid();
-        $content     = 'Small file content for fingerprint test.';
-        $hash        = hash('sha256', $content);
+        $fingerprint = 'adv003-fingerprint-reuse-'.uniqid();
+        $content = 'Small file content for fingerprint test.';
+        $hash = hash('sha256', $content);
 
         // Initiate
         $initiate1 = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'fingerprint_test.txt',
-            'file_size'    => strlen($content),
+            'file_name' => 'fingerprint_test.txt',
+            'file_size' => strlen($content),
             'total_chunks' => 1,
-            'total_hash'   => $hash,
-            'fingerprint'  => $fingerprint,
+            'total_hash' => $hash,
+            'fingerprint' => $fingerprint,
         ]);
         $initiate1->assertStatus(201);
         $sessionId1 = (string) $initiate1->json('data.session_id');
@@ -188,18 +188,18 @@ class AdvSec_AdversarialPayloadTest extends TestCase
         // Upload chunk (session transitions to uploading/completed state)
         $file = UploadedFile::fake()->createWithContent('chunk_0.tmp', $content);
         $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId1,
+            'session_id' => $sessionId1,
             'chunk_index' => 0,
-            'chunk_hash'  => $hash,
+            'chunk_hash' => $hash,
         ], [], ['file' => $file])->assertStatus(200);
 
         // Re-initiate with SAME fingerprint
         $initiate2 = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'fingerprint_test.txt',
-            'file_size'    => strlen($content),
+            'file_name' => 'fingerprint_test.txt',
+            'file_size' => strlen($content),
             'total_chunks' => 1,
-            'total_hash'   => $hash,
-            'fingerprint'  => $fingerprint,
+            'total_hash' => $hash,
+            'fingerprint' => $fingerprint,
         ]);
         $initiate2->assertStatus(201);
         $sessionId2 = (string) $initiate2->json('data.session_id');
@@ -242,13 +242,13 @@ class AdvSec_AdversarialPayloadTest extends TestCase
     public function test_vuln_sec_007_upload_endpoint_rejects_non_uuid_session_id(): void
     {
         $longSessionId = str_repeat('x', 1000);
-        $content       = 'test content';
-        $file          = UploadedFile::fake()->createWithContent('chunk.tmp', $content);
+        $content = 'test content';
+        $file = UploadedFile::fake()->createWithContent('chunk.tmp', $content);
 
         $response = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $longSessionId,
+            'session_id' => $longSessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => hash('sha256', $content),
+            'chunk_hash' => hash('sha256', $content),
         ], [], ['file' => $file], ['HTTP_ACCEPT' => 'application/json']);
 
         $response->assertStatus(422);

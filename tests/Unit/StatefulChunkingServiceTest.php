@@ -6,7 +6,7 @@ use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use Juanoecr\StatefulChunking\Facades\StatefulChunking;
 
 test('StatefulChunkingService generates and resolves valid upload token', function () {
-    $service = new StatefulChunkingService();
+    $service = new StatefulChunkingService;
 
     $token = $service->generateToken(
         sessionId: '00000000-0000-4000-8000-000000000010',
@@ -49,7 +49,7 @@ test('StatefulChunking Facade resolves token seamlessly', function () {
 });
 
 test('StatefulChunkingService handles tampered and malformed tokens safely without throwing uncaught exceptions', function () {
-    $service = new StatefulChunkingService();
+    $service = new StatefulChunkingService;
 
     $emptyResult = $service->resolveToken('');
     expect($emptyResult->isValid())->toBeFalse();
@@ -62,7 +62,7 @@ test('StatefulChunkingService handles tampered and malformed tokens safely witho
 });
 
 test('StatefulChunkingService correctly marks expired tokens as invalid', function () {
-    $service = new StatefulChunkingService();
+    $service = new StatefulChunkingService;
 
     // Generate token with negative TTL (-10 seconds)
     $expiredToken = $service->generateToken(

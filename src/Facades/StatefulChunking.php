@@ -12,7 +12,7 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO;
  * @method static string generateToken(string $sessionId, string $tempPath, string $fileName, int $fileSize, string $hash, ?string $disk = null, ?int $ttl = null)
  * @method static StagedFileDTO resolveToken(string $uploadToken)
  *
- * @see \Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService
+ * @see StatefulChunkingService
  */
 final class StatefulChunking extends Facade
 {

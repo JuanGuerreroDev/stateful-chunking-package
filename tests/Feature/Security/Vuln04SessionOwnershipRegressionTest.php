@@ -24,6 +24,7 @@ use Juanoecr\StatefulChunking\Tests\TestCase;
 class Vuln04SessionOwnershipRegressionTest extends TestCase
 {
     private string $ownerIp = '198.51.100.10';
+
     private string $attackerIp = '203.0.113.99';
 
     protected function setUp(): void
@@ -51,14 +52,15 @@ class Vuln04SessionOwnershipRegressionTest extends TestCase
         $hash = hash('sha256', $content);
 
         $response = $this->withServerVariables(['REMOTE_ADDR' => $ip])->postJson('/api/chunks/initiate', [
-            'file_name'    => $fileName,
-            'file_size'    => strlen($content),
+            'file_name' => $fileName,
+            'file_size' => strlen($content),
             'total_chunks' => 1,
-            'total_hash'   => $hash,
-            'fingerprint'  => $fingerprint ?? 'owner_fp_' . uniqid(),
+            'total_hash' => $hash,
+            'fingerprint' => $fingerprint ?? 'owner_fp_'.uniqid(),
         ]);
 
         $response->assertStatus(201);
+
         return (string) $response->json('data.session_id');
     }
 
@@ -95,9 +97,9 @@ class Vuln04SessionOwnershipRegressionTest extends TestCase
             'POST',
             '/api/chunks/upload',
             [
-                'session_id'  => $sessionId,
+                'session_id' => $sessionId,
                 'chunk_index' => 0,
-                'chunk_hash'  => hash('sha256', $content),
+                'chunk_hash' => hash('sha256', $content),
             ],
             [],
             ['file' => $file],
@@ -135,9 +137,9 @@ class Vuln04SessionOwnershipRegressionTest extends TestCase
             'POST',
             '/api/chunks/upload',
             [
-                'session_id'  => $sessionId,
+                'session_id' => $sessionId,
                 'chunk_index' => 0,
-                'chunk_hash'  => hash('sha256', $content),
+                'chunk_hash' => hash('sha256', $content),
             ],
             [],
             ['file' => $file],
@@ -176,9 +178,9 @@ class Vuln04SessionOwnershipRegressionTest extends TestCase
             'POST',
             '/api/chunks/upload',
             [
-                'session_id'  => $sessionId,
+                'session_id' => $sessionId,
                 'chunk_index' => 0,
-                'chunk_hash'  => hash('sha256', $content),
+                'chunk_hash' => hash('sha256', $content),
             ],
             [],
             ['file' => $file],
@@ -199,7 +201,7 @@ class Vuln04SessionOwnershipRegressionTest extends TestCase
      */
     public function test_fingerprint_reuse_does_not_hijack_foreign_session(): void
     {
-        $sharedFingerprint = 'shared_fingerprint_' . uniqid();
+        $sharedFingerprint = 'shared_fingerprint_'.uniqid();
         $content = 'SESSION ISOLATED CONTENT';
 
         // Owner creates session with fingerprint
@@ -207,11 +209,11 @@ class Vuln04SessionOwnershipRegressionTest extends TestCase
 
         // Attacker attempts initiate with SAME fingerprint from different IP
         $attackerResponse = $this->withServerVariables(['REMOTE_ADDR' => $this->attackerIp])->postJson('/api/chunks/initiate', [
-            'file_name'    => 'doc_b.txt',
-            'file_size'    => strlen($content),
+            'file_name' => 'doc_b.txt',
+            'file_size' => strlen($content),
             'total_chunks' => 1,
-            'total_hash'   => hash('sha256', $content),
-            'fingerprint'  => $sharedFingerprint,
+            'total_hash' => hash('sha256', $content),
+            'fingerprint' => $sharedFingerprint,
         ]);
 
         $attackerResponse->assertStatus(201);

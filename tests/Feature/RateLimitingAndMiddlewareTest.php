@@ -56,7 +56,7 @@ class RateLimitingAndMiddlewareTest extends TestCase
 
         // Re-register routes with disabled rate limits
         $this->app->make('router')->getRoutes()->refreshNameLookups();
-        require __DIR__ . '/../../routes/api.php';
+        require __DIR__.'/../../routes/api.php';
 
         RateLimiter::clear('stateful-chunking-initiate');
 

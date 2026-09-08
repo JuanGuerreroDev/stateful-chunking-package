@@ -38,11 +38,11 @@ class Vuln09AuthenticationAuthorizationRegressionTest extends TestCase
     private function validInitiatePayload(): array
     {
         return [
-            'file_name'    => 'auth_test_doc.txt',
-            'file_size'    => 1024,
+            'file_name' => 'auth_test_doc.txt',
+            'file_size' => 1024,
             'total_chunks' => 1,
-            'total_hash'   => str_repeat('a', 64),
-            'fingerprint'  => 'auth_fp_' . uniqid(),
+            'total_hash' => str_repeat('a', 64),
+            'fingerprint' => 'auth_fp_'.uniqid(),
         ];
     }
 
@@ -86,9 +86,9 @@ class Vuln09AuthenticationAuthorizationRegressionTest extends TestCase
             'POST',
             '/api/chunks/upload',
             [
-                'session_id'  => 'a0000000-0000-0000-0000-000000000001',
+                'session_id' => 'a0000000-0000-0000-0000-000000000001',
                 'chunk_index' => 0,
-                'chunk_hash'  => hash('sha256', 'TEST CHUNK DATA'),
+                'chunk_hash' => hash('sha256', 'TEST CHUNK DATA'),
             ],
             [],
             ['file' => $file],

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Juanoecr\StatefulChunking\Rules\ValidUploadToken;
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use Illuminate\Support\Facades\Validator;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunking\Rules\ValidUploadToken;
 
 test('ValidUploadToken rule passes for a valid unexpired upload token', function () {
-    $service = new StatefulChunkingService();
+    $service = new StatefulChunkingService;
     $validToken = $service->generateToken(
         sessionId: '00000000-0000-4000-8000-000000000050',
         tempPath: 'uploads/temp/valid.mp4',
@@ -27,33 +27,33 @@ test('ValidUploadToken rule passes for a valid unexpired upload token', function
 });
 
 test('ValidUploadToken rule fails for non-string, empty or tampered tokens', function () {
-    $rule = new ValidUploadToken();
+    $rule = new ValidUploadToken;
 
     // 1. Non-string
     $validator1 = Validator::make(
         ['upload_token' => 12345],
-        ['upload_token' => [new ValidUploadToken()]]
+        ['upload_token' => [new ValidUploadToken]]
     );
     expect($validator1->fails())->toBeTrue();
 
     // 2. Empty string
     $validator2 = Validator::make(
         ['upload_token' => '   '],
-        ['upload_token' => [new ValidUploadToken()]]
+        ['upload_token' => [new ValidUploadToken]]
     );
     expect($validator2->fails())->toBeTrue();
 
     // 3. Tampered token
     $validator3 = Validator::make(
         ['upload_token' => 'tampered_invalid_token_123'],
-        ['upload_token' => [new ValidUploadToken()]]
+        ['upload_token' => [new ValidUploadToken]]
     );
     expect($validator3->fails())->toBeTrue();
     expect($validator3->errors()->first('upload_token'))->toContain('invalid or has been tampered with');
 });
 
 test('ValidUploadToken rule fails with specific message for expired tokens', function () {
-    $service = new StatefulChunkingService();
+    $service = new StatefulChunkingService;
     $expiredToken = $service->generateToken(
         sessionId: '00000000-0000-4000-8000-000000000060',
         tempPath: 'uploads/temp/expired.mp4',
