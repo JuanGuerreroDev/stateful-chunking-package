@@ -81,14 +81,18 @@ final class ReassembleFileAction
             'verified' => true,
         ];
 
+        // Positional args (not named): Laravel 10/11's Dispatchable::dispatch()
+        // forwards via func_get_args(), which drops named arguments and throws
+        // "Unknown named parameter". Positional works across Laravel 10-13.
+        // Order matches FileReassembled::__construct().
         FileReassembled::dispatch(
-            sessionId: $sessionId,
-            uploadToken: $uploadToken,
-            filePath: $assembledPath,
-            fileName: $session->fileName,
-            fileSize: $session->fileSize,
-            hash: $session->totalHash->value,
-            reassemblyData: $result
+            $sessionId,
+            $uploadToken,
+            $assembledPath,
+            $session->fileName,
+            $session->fileSize,
+            $session->totalHash->value,
+            $result
         );
 
         return $result;
