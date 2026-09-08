@@ -1,0 +1,13 @@
+{
+    "message": "File reassembled successfully",
+    "data": {
+        "session_id": "<session_id>",
+        "upload_token": "<upload_token>",
+        "file_name": "contract.bin",
+        "file_size": 31,
+        "computed_hash": "3ad36ea0cae7c268660c2ee9417e46f2e64518cd86fb03a88e38e070351b780e",
+        "verified": true,
+        "path": "<server_path>",
+        "relative_path": "<server_path>"
+    }
+}

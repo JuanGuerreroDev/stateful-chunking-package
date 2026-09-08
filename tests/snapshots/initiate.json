@@ -1,0 +1,23 @@
+{
+    "message": "Session initiated successfully",
+    "data": {
+        "session_id": "<session_id>",
+        "file_name": "contract.bin",
+        "file_size": 31,
+        "uploaded_bytes": 0,
+        "total_chunks": 1,
+        "total_hash": "3ad36ea0cae7c268660c2ee9417e46f2e64518cd86fb03a88e38e070351b780e",
+        "fingerprint": "contract-fixture",
+        "status": "pending",
+        "chunks_map": [
+            "pending"
+        ],
+        "pending_chunks": [
+            0
+        ],
+        "created_at": "<timestamp>",
+        "expires_at": "<timestamp>",
+        "is_expired": false,
+        "remaining_ttl": "<remaining_ttl>"
+    }
+}
