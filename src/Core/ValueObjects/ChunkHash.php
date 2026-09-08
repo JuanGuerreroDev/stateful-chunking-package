@@ -13,7 +13,7 @@ final readonly class ChunkHash
     public function __construct(string $value)
     {
         $trimmed = trim($value);
-        if (!preg_match('/^[a-f0-9]{64}$/i', $trimmed)) {
+        if (! preg_match('/^[a-f0-9]{64}$/i', $trimmed)) {
             throw new InvalidArgumentException('ChunkHash must be a valid 64-character SHA-256 hex string.');
         }
 

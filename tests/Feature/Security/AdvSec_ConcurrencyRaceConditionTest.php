@@ -7,10 +7,9 @@ namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 use Juanoecr\StatefulChunking\Tests\TestCase;
 
@@ -27,6 +26,7 @@ use Juanoecr\StatefulChunking\Tests\TestCase;
 class AdvSec_ConcurrencyRaceConditionTest extends TestCase
 {
     private CacheStateRepository $repository;
+
     private string $validHash;
 
     protected function setUp(): void
@@ -36,8 +36,8 @@ class AdvSec_ConcurrencyRaceConditionTest extends TestCase
         Config::set('stateful-chunking.rate_limits.initiate', 1000);
         Config::set('stateful-chunking.rate_limits.upload', 1000);
 
-        $this->repository = new CacheStateRepository();
-        $this->validHash  = hash('sha256', 'test_content');
+        $this->repository = new CacheStateRepository;
+        $this->validHash = hash('sha256', 'test_content');
     }
 
     private function createTestSession(string $sessionId, int $totalChunks = 3): ChunkSession
@@ -114,7 +114,7 @@ class AdvSec_ConcurrencyRaceConditionTest extends TestCase
             'pending',
             $chunk0Status,
             'VULN-SEC-002 CONFIRMED: Chunk 0 (marked by Server A) was LOST when Server B wrote back its stale snapshot. '
-            . 'This is the classic read-modify-write lost update in the fallback lock path.'
+            .'This is the classic read-modify-write lost update in the fallback lock path.'
         );
 
         $this->assertEquals(
@@ -174,10 +174,10 @@ class AdvSec_ConcurrencyRaceConditionTest extends TestCase
         // This is the architectural flaw: local lock, shared cache = race condition
         $this->assertTrue(
             true,
-            'VULN-SEC-002: The fallback flock() lock at ' . $expectedLockPath
-            . ' is LOCAL to each machine. In a multi-server cluster with shared cache '
-            . '(file cache over NFS or database cache), concurrent writes from different '
-            . 'servers are NOT serialized, leading to lost updates.'
+            'VULN-SEC-002: The fallback flock() lock at '.$expectedLockPath
+            .' is LOCAL to each machine. In a multi-server cluster with shared cache '
+            .'(file cache over NFS or database cache), concurrent writes from different '
+            .'servers are NOT serialized, leading to lost updates.'
         );
     }
 }

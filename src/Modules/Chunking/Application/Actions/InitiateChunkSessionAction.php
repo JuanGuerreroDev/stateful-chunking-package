@@ -19,7 +19,7 @@ final class InitiateChunkSessionAction
     public function handle(InitiateSessionDTO $dto): ChunkSession
     {
         // Reuse session if fingerprint matches and belongs to the same owner
-        if (!empty($dto->fingerprint)) {
+        if (! empty($dto->fingerprint)) {
             $existing = $this->repository->findSessionByFingerprint($dto->fingerprint);
             if ($existing && ($existing->ownerId === null || $existing->ownerId === $dto->ownerId)) {
                 return $existing;

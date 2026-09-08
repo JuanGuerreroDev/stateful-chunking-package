@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO;
 use Illuminate\Support\Facades\Storage;
+use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO;
 
 test('StagedFileDTO instantiates correctly and validates validity and expiration', function () {
     $dto = new StagedFileDTO(

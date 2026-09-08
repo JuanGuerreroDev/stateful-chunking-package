@@ -6,6 +6,7 @@ namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use Juanoecr\StatefulChunking\Tests\TestCase;
 
 /**
@@ -35,20 +36,20 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
         $hashUserA = hash('sha256', $contentUserA);
 
         $initUserA = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => $commonFileName,
-            'file_size'    => strlen($contentUserA),
+            'file_name' => $commonFileName,
+            'file_size' => strlen($contentUserA),
             'total_chunks' => 1,
-            'total_hash'   => $hashUserA,
-            'fingerprint'  => 'user_a_fp_' . uniqid(),
+            'total_hash' => $hashUserA,
+            'fingerprint' => 'user_a_fp_'.uniqid(),
         ]);
         $initUserA->assertStatus(201);
         $sessionIdUserA = (string) $initUserA->json('data.session_id');
 
         $fileUserA = UploadedFile::fake()->createWithContent('chunk_0.tmp', $contentUserA);
         $uploadUserA = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionIdUserA,
+            'session_id' => $sessionIdUserA,
             'chunk_index' => 0,
-            'chunk_hash'  => $hashUserA,
+            'chunk_hash' => $hashUserA,
         ], [], ['file' => $fileUserA]);
         $uploadUserA->assertStatus(200);
 
@@ -57,7 +58,7 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
         ]);
         $completeUserA->assertStatus(200);
         $tokenUserA = (string) $completeUserA->json('data.upload_token');
-        $pathUserA = app(\Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class)->resolveToken($tokenUserA)->tempPath;
+        $pathUserA = app(StatefulChunkingService::class)->resolveToken($tokenUserA)->tempPath;
 
         // ═══════════════════════════════════════════════════════════════
         // USER B: Uploads critical_contract.pdf (Identical filename)
@@ -66,11 +67,11 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
         $hashUserB = hash('sha256', $contentUserB);
 
         $initUserB = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => $commonFileName,
-            'file_size'    => strlen($contentUserB),
+            'file_name' => $commonFileName,
+            'file_size' => strlen($contentUserB),
             'total_chunks' => 1,
-            'total_hash'   => $hashUserB,
-            'fingerprint'  => 'user_b_fp_' . uniqid(),
+            'total_hash' => $hashUserB,
+            'fingerprint' => 'user_b_fp_'.uniqid(),
         ]);
         $initUserB->assertStatus(201);
         $sessionIdUserB = (string) $initUserB->json('data.session_id');
@@ -79,9 +80,9 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
 
         $fileUserB = UploadedFile::fake()->createWithContent('chunk_0.tmp', $contentUserB);
         $uploadUserB = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionIdUserB,
+            'session_id' => $sessionIdUserB,
             'chunk_index' => 0,
-            'chunk_hash'  => $hashUserB,
+            'chunk_hash' => $hashUserB,
         ], [], ['file' => $fileUserB]);
         $uploadUserB->assertStatus(200);
 
@@ -90,7 +91,7 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
         ]);
         $completeUserB->assertStatus(200);
         $tokenUserB = (string) $completeUserB->json('data.upload_token');
-        $pathUserB = app(\Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class)->resolveToken($tokenUserB)->tempPath;
+        $pathUserB = app(StatefulChunkingService::class)->resolveToken($tokenUserB)->tempPath;
 
         // ═══════════════════════════════════════════════════════════════
         // REGRESSION ASSERTIONS (DEFENSE VERIFICATION)
@@ -148,20 +149,20 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
         $traversalHash = hash('sha256', $traversalContent);
 
         $initResponse = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => 'safe_file.txt',
-            'file_size'    => strlen($traversalContent),
+            'file_name' => 'safe_file.txt',
+            'file_size' => strlen($traversalContent),
             'total_chunks' => 1,
-            'total_hash'   => $traversalHash,
-            'fingerprint'  => 'traversal_fp_' . uniqid(),
+            'total_hash' => $traversalHash,
+            'fingerprint' => 'traversal_fp_'.uniqid(),
         ]);
         $initResponse->assertStatus(201);
         $sessionId = (string) $initResponse->json('data.session_id');
 
         $file = UploadedFile::fake()->createWithContent('chunk_0.tmp', $traversalContent);
         $upload = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $traversalHash,
+            'chunk_hash' => $traversalHash,
         ], [], ['file' => $file]);
         $upload->assertStatus(200);
 
@@ -170,10 +171,10 @@ class Vuln01FileOverwriteRegressionTest extends TestCase
         ]);
         $complete->assertStatus(200);
         $completeToken = (string) $complete->json('data.upload_token');
-        $finalPath = app(\Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService::class)->resolveToken($completeToken)->tempPath;
+        $finalPath = app(StatefulChunkingService::class)->resolveToken($completeToken)->tempPath;
 
         // Path must strictly start with the base storage path + session namespace
-        $expectedPrefix = 'uploads/' . $sessionId . '/';
+        $expectedPrefix = 'uploads/'.$sessionId.'/';
         $this->assertStringStartsWith(
             $expectedPrefix,
             $finalPath,

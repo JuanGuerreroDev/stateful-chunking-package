@@ -35,12 +35,14 @@ class CustomNonLockingStore implements Store
         foreach ($keys as $key) {
             $res[$key] = $this->get($key);
         }
+
         return $res;
     }
 
     public function put($key, $value, $seconds): bool
     {
         $this->storage[$key] = $value;
+
         return true;
     }
 
@@ -49,6 +51,7 @@ class CustomNonLockingStore implements Store
         foreach ($values as $key => $value) {
             $this->storage[$key] = $value;
         }
+
         return true;
     }
 
@@ -57,6 +60,7 @@ class CustomNonLockingStore implements Store
         $current = (int) ($this->storage[$key] ?? 0);
         $new = $current + $value;
         $this->storage[$key] = $new;
+
         return $new;
     }
 
@@ -68,18 +72,21 @@ class CustomNonLockingStore implements Store
     public function forever($key, $value): bool
     {
         $this->storage[$key] = $value;
+
         return true;
     }
 
     public function forget($key): bool
     {
         unset($this->storage[$key]);
+
         return true;
     }
 
     public function flush(): bool
     {
         $this->storage = [];
+
         return true;
     }
 
@@ -114,14 +121,14 @@ class Vuln05ConcurrencyLockRegressionTest extends TestCase
 
         // Register custom store that does NOT implement LockProvider
         Cache::extend('custom_unlocked', function ($app) {
-            return Cache::repository(new CustomNonLockingStore());
+            return Cache::repository(new CustomNonLockingStore);
         });
 
         Config::set('cache.stores.custom_unlocked', ['driver' => 'custom_unlocked']);
         Config::set('cache.default', 'custom_unlocked');
         Config::set('stateful-chunking.cache_store', 'custom_unlocked');
 
-        $this->repository = new CacheStateRepository();
+        $this->repository = new CacheStateRepository;
     }
 
     private function createDummySession(int $totalChunks = 5): ChunkSession
@@ -132,7 +139,7 @@ class Vuln05ConcurrencyLockRegressionTest extends TestCase
             fileSize: $totalChunks * 1024,
             totalChunks: $totalChunks,
             totalHash: ChunkHash::fromString(str_repeat('a', 64)),
-            fingerprint: 'concurrency_fp_' . uniqid(),
+            fingerprint: 'concurrency_fp_'.uniqid(),
             status: SessionStatus::PENDING,
             chunksMap: array_fill(0, $totalChunks, 'pending'),
             createdAt: time(),
@@ -141,6 +148,7 @@ class Vuln05ConcurrencyLockRegressionTest extends TestCase
         );
 
         $this->repository->saveSession($session);
+
         return $session;
     }
 

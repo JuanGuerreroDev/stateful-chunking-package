@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Rules;
 
-use Illuminate\Contracts\Validation\ValidationRule;
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Translation\PotentiallyTranslatedString;
+use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
 
 final class ValidUploadToken implements ValidationRule
 {
@@ -16,26 +17,28 @@ final class ValidUploadToken implements ValidationRule
     public bool $implicit = true;
 
     public function __construct(
-        private readonly StatefulChunkingService $tokenService = new StatefulChunkingService()
+        private readonly StatefulChunkingService $tokenService = new StatefulChunkingService
     ) {}
 
     /**
      * Run the validation rule.
      *
-     * @param  \Closure(string, ?string=): \Illuminate\Translation\PotentiallyTranslatedString  $fail
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (!is_string($value) || trim($value) === '') {
+        if (! is_string($value) || trim($value) === '') {
             $fail("The {$attribute} must be a valid string token.");
+
             return;
         }
 
         $stagedFile = $this->tokenService->resolveToken($value);
 
-        if (!$stagedFile->isValid()) {
+        if (! $stagedFile->isValid()) {
             if ($stagedFile->isExpired()) {
                 $fail("The {$attribute} has expired.");
+
                 return;
             }
 

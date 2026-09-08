@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Juanoecr\StatefulChunking\Console\Commands;
 
 use Illuminate\Console\Command;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 
 final class ClearStaleSessionsCommand extends Command
 {
@@ -44,6 +44,7 @@ final class ClearStaleSessionsCommand extends Command
         }
 
         $this->info('Stateful Chunking garbage collection command executed successfully.');
+
         return Command::SUCCESS;
     }
 }

@@ -28,7 +28,7 @@ final class DomainEventsDispatchTest extends TestCase
 
         $chunk1 = 'FirstChunkContent_';
         $chunk2 = 'SecondChunkContent';
-        $fullContent = $chunk1 . $chunk2;
+        $fullContent = $chunk1.$chunk2;
         $totalHash = hash('sha256', $fullContent);
         $chunk1Hash = hash('sha256', $chunk1);
         $chunk2Hash = hash('sha256', $chunk2);
@@ -91,7 +91,7 @@ final class DomainEventsDispatchTest extends TestCase
             return $event->sessionId === $sessionId
                 && $event->fileName === 'events_test_file.txt'
                 && $event->hash === $totalHash
-                && !empty($event->uploadToken);
+                && ! empty($event->uploadToken);
         });
     }
 

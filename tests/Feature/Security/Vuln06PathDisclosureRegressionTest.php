@@ -42,20 +42,20 @@ class Vuln06PathDisclosureRegressionTest extends TestCase
         $hash = hash('sha256', $content);
 
         $initiate = $this->postJson('/api/chunks/initiate', [
-            'file_name'    => $fileName,
-            'file_size'    => strlen($content),
+            'file_name' => $fileName,
+            'file_size' => strlen($content),
             'total_chunks' => 1,
-            'total_hash'   => $hash,
-            'fingerprint'  => 'vuln06_fp_' . uniqid(),
+            'total_hash' => $hash,
+            'fingerprint' => 'vuln06_fp_'.uniqid(),
         ]);
         $initiate->assertStatus(201);
         $sessionId = (string) $initiate->json('data.session_id');
 
         $file = UploadedFile::fake()->createWithContent('chunk_0.tmp', $content);
         $upload = $this->call('POST', '/api/chunks/upload', [
-            'session_id'  => $sessionId,
+            'session_id' => $sessionId,
             'chunk_index' => 0,
-            'chunk_hash'  => $hash,
+            'chunk_hash' => $hash,
         ], [], ['file' => $file]);
         $upload->assertStatus(200);
 
@@ -65,9 +65,9 @@ class Vuln06PathDisclosureRegressionTest extends TestCase
         $complete->assertStatus(200);
 
         return [
-            'response'   => $complete,
+            'response' => $complete,
             'session_id' => $sessionId,
-            'hash'       => $hash,
+            'hash' => $hash,
         ];
     }
 

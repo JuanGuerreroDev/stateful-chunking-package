@@ -1,8 +1,8 @@
 <?php
 
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
@@ -133,5 +133,3 @@ test('CacheStateRepository automatically purges expired session and returns null
     $byFp = $repo->findSessionByFingerprint('expired-fp-test');
     expect($byFp)->toBeNull();
 });
-
-

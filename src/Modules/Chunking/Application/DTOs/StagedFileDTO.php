@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs;
 
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
 
 final readonly class StagedFileDTO
@@ -21,7 +22,7 @@ final readonly class StagedFileDTO
 
     public function isValid(): bool
     {
-        return $this->isValid && !$this->isExpired();
+        return $this->isValid && ! $this->isExpired();
     }
 
     public function isExpired(): bool
@@ -31,9 +32,10 @@ final readonly class StagedFileDTO
 
     public function mimeType(): ?string
     {
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        /** @var FilesystemAdapter $disk */
         $disk = Storage::disk($this->disk);
         $mime = $disk->mimeType($this->tempPath);
+
         return is_string($mime) ? $mime : null;
     }
 
@@ -55,7 +57,7 @@ final readonly class StagedFileDTO
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public static function fromArray(array $data): self
     {

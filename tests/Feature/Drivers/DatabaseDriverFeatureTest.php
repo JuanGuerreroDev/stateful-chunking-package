@@ -16,7 +16,7 @@ class DatabaseDriverFeatureTest extends TestCase
     {
         parent::setUp();
 
-        if (!extension_loaded('pdo_sqlite')) {
+        if (! extension_loaded('pdo_sqlite')) {
             $this->markTestSkipped('The pdo_sqlite PHP extension is required for DatabaseDriverFeatureTest.');
         }
 
@@ -54,9 +54,9 @@ class DatabaseDriverFeatureTest extends TestCase
 
     public function test_database_cache_driver_persists_session_in_sql_table_and_completes_upload(): void
     {
-        $chunk0Data = "DATABASE DRIVER TEST CHUNK 0 - RELATIONAL SQL PERSISTENCE.";
-        $chunk1Data = "DATABASE DRIVER TEST CHUNK 1 - ATOMIC LOCKING IN SQLITE.";
-        $fullContent = $chunk0Data . $chunk1Data;
+        $chunk0Data = 'DATABASE DRIVER TEST CHUNK 0 - RELATIONAL SQL PERSISTENCE.';
+        $chunk1Data = 'DATABASE DRIVER TEST CHUNK 1 - ATOMIC LOCKING IN SQLITE.';
+        $fullContent = $chunk0Data.$chunk1Data;
 
         $chunk0Hash = hash('sha256', $chunk0Data);
         $chunk1Hash = hash('sha256', $chunk1Data);
@@ -68,7 +68,7 @@ class DatabaseDriverFeatureTest extends TestCase
             'file_size' => strlen($fullContent),
             'total_chunks' => 2,
             'total_hash' => $totalHash,
-            'fingerprint' => 'db_driver_fp_' . time(),
+            'fingerprint' => 'db_driver_fp_'.time(),
         ]);
 
         $initiateResponse->assertStatus(201);
@@ -119,7 +119,7 @@ class DatabaseDriverFeatureTest extends TestCase
 
     public function test_database_cache_driver_deletes_rows_on_cancellation(): void
     {
-        $fingerprint = 'db_cancel_fp_' . time();
+        $fingerprint = 'db_cancel_fp_'.time();
         $initiateResponse = $this->postJson('/api/chunks/initiate', [
             'file_name' => 'to_cancel_db.txt',
             'file_size' => 1024,

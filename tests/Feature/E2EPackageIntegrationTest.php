@@ -4,6 +4,7 @@ namespace Juanoecr\StatefulChunking\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Juanoecr\StatefulChunking\Facades\StatefulChunking;
 use Juanoecr\StatefulChunking\Tests\TestCase;
 
 class E2EPackageIntegrationTest extends TestCase
@@ -13,9 +14,9 @@ class E2EPackageIntegrationTest extends TestCase
         Storage::fake('local');
 
         // 1. Prepare raw content & cryptographic hashes
-        $chunk0Data = "FUNCTIONAL TEST CHUNK 0 - STATEFUL CHUNKING PACKAGE FOR LARAVEL.";
-        $chunk1Data = "FUNCTIONAL TEST CHUNK 1 - VERIFIED RESILIENT CACHE REASSEMBLY.";
-        $fullContent = $chunk0Data . $chunk1Data;
+        $chunk0Data = 'FUNCTIONAL TEST CHUNK 0 - STATEFUL CHUNKING PACKAGE FOR LARAVEL.';
+        $chunk1Data = 'FUNCTIONAL TEST CHUNK 1 - VERIFIED RESILIENT CACHE REASSEMBLY.';
+        $fullContent = $chunk0Data.$chunk1Data;
 
         $chunk0Hash = hash('sha256', $chunk0Data);
         $chunk1Hash = hash('sha256', $chunk1Data);
@@ -27,7 +28,7 @@ class E2EPackageIntegrationTest extends TestCase
             'file_size' => strlen($fullContent),
             'total_chunks' => 2,
             'total_hash' => $totalHash,
-            'fingerprint' => 'e2e_fp_' . time(),
+            'fingerprint' => 'e2e_fp_'.time(),
         ]);
 
         $initiateResponse->assertStatus(201);
@@ -76,7 +77,7 @@ class E2EPackageIntegrationTest extends TestCase
         $this->assertNotEmpty($reassembleData['upload_token']);
 
         // Verify that the upload token can be resolved by consumer facade
-        $stagedFile = \Juanoecr\StatefulChunking\Facades\StatefulChunking::resolveToken($reassembleData['upload_token']);
+        $stagedFile = StatefulChunking::resolveToken($reassembleData['upload_token']);
         $this->assertTrue($stagedFile->isValid());
         $this->assertEquals($sessionId, $stagedFile->sessionId);
         $this->assertEquals('e2e_verified_document.txt', $stagedFile->fileName);
