@@ -11,7 +11,7 @@ on:
 
 jobs:
   quality:
-    name: Static analysis & code style
+    name: Static analysis, style & coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,7 @@ jobs:
         with:
           php-version: '8.3'
           extensions: mbstring, json, redis, bcmath, pdo_sqlite
-          coverage: none
+          coverage: pcov
 
       - name: Install dependencies
         run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
@@ -33,6 +33,9 @@ jobs:
 
       - name: Run PHPStan static analysis
         run: vendor/bin/phpstan analyse --error-format=github
+
+      - name: Run Pest with coverage (min 90%)
+        run: vendor/bin/pest --coverage --min=90
 
   test:
     name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }}
