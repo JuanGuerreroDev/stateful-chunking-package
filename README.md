@@ -1,5 +1,6 @@
 # Stateful Chunking Package for Laravel
 
+[![Tests](https://github.com/JuanGuerreroDev/stateful-chunking-package/actions/workflows/tests.yml/badge.svg)](https://github.com/JuanGuerreroDev/stateful-chunking-package/actions/workflows/tests.yml)
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/juanoecr/stateful-chunking.svg?style=flat-square)](https://packagist.org/packages/juanoecr/stateful-chunking)
 [![Total Downloads](https://img.shields.io/packagist/dt/juanoecr/stateful-chunking.svg?style=flat-square)](https://packagist.org/packages/juanoecr/stateful-chunking)
 [![License](https://img.shields.io/packagist/l/juanoecr/stateful-chunking.svg?style=flat-square)](LICENSE)
@@ -21,6 +22,16 @@ High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, 12, 
 - **Garbage Collection (Stale Cleanup)**: Built-in Artisan command (`php artisan stateful-chunking:clear-stale`) for purging expired upload sessions and orphaned temporary files.
 - **Auto-Discovery & Zero Setup**: Auto-registers `StatefulChunkingServiceProvider` and REST API endpoints out-of-the-box.
 - **Customizable Routes**: Custom prefix, route middlewares (`auth:sanctum`, `api`), and config overrides.
+
+---
+
+## Compatibility
+
+| Package | PHP       | Laravel        |
+| ------- | --------- | -------------- |
+| `1.x`   | 8.2 – 8.4 | 10, 11, 12, 13 |
+
+Every supported PHP × Laravel combination is exercised on CI — the full test suite, PHPStan (level 10), and Laravel Pint — and the response shape is pinned by a byte-for-byte contract snapshot, so the JSON a consumer receives is identical across framework versions. See the [Tests workflow](.github/workflows/tests.yml).
 
 ---
 
