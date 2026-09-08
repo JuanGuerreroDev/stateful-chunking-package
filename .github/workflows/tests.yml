@@ -94,9 +94,15 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-${{ matrix.php }}-laravel${{ matrix.laravel }}-
 
       - name: Install dependencies (Laravel ${{ matrix.laravel }})
+        # --no-blocking: this is a cross-version *compatibility* matrix, so we
+        # deliberately install older framework lines (Laravel 10/11) even when
+        # Composer 2.9+ would block them for open security advisories. We are
+        # exercising the package against those frameworks, not shipping them.
+        # The `quality` job keeps blocking ON, so a vulnerable *latest* stable
+        # still fails CI.
         run: |
           composer require --dev "orchestra/testbench:^${{ matrix.testbench }}.0" --no-interaction --no-update
-          composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+          composer update --prefer-stable --prefer-dist --no-interaction --no-progress --no-blocking
 
       - name: Execute Pest tests
         run: vendor/bin/pest
