@@ -30,6 +30,20 @@
             "Juanoecr\\StatefulChunking\\Tests\\": "tests/"
         }
     },
+    "scripts": {
+        "test": "pest",
+        "test:coverage": "pest --coverage --min=90",
+        "lint": "pint",
+        "lint:test": "pint --test",
+        "analyse": "phpstan analyse"
+    },
+    "scripts-descriptions": {
+        "test": "Run the Pest test suite.",
+        "test:coverage": "Run the suite with coverage, failing under 90%.",
+        "lint": "Fix code style with Pint.",
+        "lint:test": "Check code style with Pint (no changes).",
+        "analyse": "Run PHPStan static analysis."
+    },
     "extra": {
         "laravel": {
             "providers": [
