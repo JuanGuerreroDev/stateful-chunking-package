@@ -23,7 +23,7 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\CallerIdentity;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\CompleteChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
@@ -47,9 +47,14 @@ final class ChunkUploadController extends Controller
 {
     private StateRepositoryInterface $stateRepository;
 
-    public function __construct(?StateRepositoryInterface $repository = null)
-    {
+    private ResolvesCallerIdentity $callerIdentity;
+
+    public function __construct(
+        ?StateRepositoryInterface $repository = null,
+        ?ResolvesCallerIdentity $callerIdentity = null,
+    ) {
         $this->stateRepository = $repository ?? app(StateRepositoryInterface::class);
+        $this->callerIdentity = $callerIdentity ?? app(ResolvesCallerIdentity::class);
     }
 
     private function logger(): LoggerInterface
@@ -62,7 +67,7 @@ final class ChunkUploadController extends Controller
 
     private function resolveCurrentOwnerId(Request $request): string
     {
-        return CallerIdentity::resolve($request);
+        return $this->callerIdentity->resolve($request);
     }
 
     /**

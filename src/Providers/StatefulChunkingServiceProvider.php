@@ -12,7 +12,8 @@ use Juanoecr\StatefulChunking\Console\Commands\ClearStaleSessionsCommand;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\CallerIdentity;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\RequestCallerIdentity;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
 
@@ -30,6 +31,9 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
 
         $this->app->bind(StateRepositoryInterface::class, CacheStateRepository::class);
         $this->app->bind(FileStorageInterface::class, LocalStorageAdapter::class);
+        // Identity is an extension point: a multi-tenant or API-key deployment rebinds
+        // this and both the ownership check and the rate-limit bucket follow.
+        $this->app->bind(ResolvesCallerIdentity::class, RequestCallerIdentity::class);
 
         $this->app->singleton(
             StatefulChunkingService::class,
@@ -71,11 +75,10 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
             return;
         }
 
-        // One answer to "who is calling?", shared with the controller's ownership check.
-        // This used to be a second, independent implementation built on
-        // property_exists($user, 'id'), which is always false for an Eloquent model —
-        // so authenticated callers were silently bucketed by IP.
-        $resolveKey = static fn (Request $request): string => CallerIdentity::resolve($request);
+        // Resolved from the container per request, not captured at boot, so a consumer
+        // that rebinds ResolvesCallerIdentity changes the rate-limit buckets too — not
+        // only session ownership. One answer to "who is calling?", for both readers.
+        $resolveKey = static fn (Request $request): string => app(ResolvesCallerIdentity::class)->resolve($request);
 
         $getConfigLimit = function (string $key, int $default): int {
             $val = config("stateful-chunking.rate_limits.{$key}", $default);
