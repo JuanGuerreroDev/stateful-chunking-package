@@ -338,6 +338,21 @@ class ScanFileForViruses implements ShouldQueue
 
 ---
 
+## Architecture
+
+Contributing, or auditing how a request actually flows through the package? Start with
+[`docs/architecture/`](docs/architecture/):
+
+| Document | What it answers |
+| :--- | :--- |
+| [Layers and ports](docs/architecture/README.md) | How the layers are arranged, which way dependencies point, and where adapters are wired |
+| [Request lifecycle](docs/architecture/request-lifecycle.md) | Each endpoint end to end, with the exact point where authorization happens |
+| [Data transformations](docs/architecture/data-transformations.md) | Where every input is validated, normalised, and first trusted |
+
+Design decisions and their rationale live in [`docs/decisions/`](docs/decisions/) as ADRs.
+
+---
+
 ## Testing
 
 Run isolated package tests via Pest and Orchestra Testbench:
