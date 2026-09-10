@@ -53,25 +53,30 @@ final class ReassembleFileAction
             );
         }
 
+        // Derive the staged path, the token and the purge from the resolved session's
+        // own identifier rather than from the string we were called with: the value that
+        // ends up in a filesystem path should come from the entity, not from the request.
+        $resolvedId = $session->sessionId->value;
+
         $assembledPath = $this->storage->reassembleFile(
-            sessionId: $sessionId,
+            sessionId: $resolvedId,
             fileName: $session->fileName,
             totalChunks: $session->totalChunks,
             expectedTotalHash: $session->totalHash->value
         );
 
         $uploadToken = $this->tokenService->generateToken(
-            sessionId: $sessionId,
+            sessionId: $resolvedId,
             tempPath: $assembledPath,
             fileName: $session->fileName,
             fileSize: $session->fileSize,
             hash: $session->totalHash->value
         );
 
-        $this->repository->deleteSession($sessionId);
+        $this->repository->deleteSession($resolvedId);
 
         $result = [
-            'session_id' => $sessionId,
+            'session_id' => $resolvedId,
             'upload_token' => $uploadToken,
             'file_name' => $session->fileName,
             'file_size' => $session->fileSize,
@@ -86,7 +91,7 @@ final class ReassembleFileAction
         // "Unknown named parameter". Positional works across Laravel 10-13.
         // Order matches FileReassembled::__construct().
         FileReassembled::dispatch(
-            $sessionId,
+            $resolvedId,
             $uploadToken,
             $assembledPath,
             $session->fileName,
