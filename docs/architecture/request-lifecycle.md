@@ -5,21 +5,28 @@ authorization decision is made**. That annotation is the reason this document ex
 the package's ownership guard is correct in isolation, and what breaks it is *when* it
 runs relative to validation and normalisation.
 
-> **State of this document**: describes `main` at `3233508`, *before* the AF-001…AF-010
-> remediation. Steps marked **⚠** are known-open findings from
+> **State of this document**: AF-001, AF-006 and AF-010 are **resolved** — see
+> [ADR-0003](../decisions/0003-normalise-identity-at-the-adapter-boundary.md). Steps
+> still marked **⚠** are open findings from
 > `docs/audits/scans/2026-09-08_final_offensive_audit.md`; each remediation PR updates
-> the affected diagram. See [`data-transformations.md`](data-transformations.md) for the
-> per-value view of the same seams.
+> the diagrams it changes. See [`data-transformations.md`](data-transformations.md) for
+> the per-value view of the same seams.
 
 ## Authorization at a glance
 
+Every endpoint that accepts a session identifier canonicalises it **first**, through
+`ChunkUploadController::canonicalSessionId()`, and only then makes an authorization
+decision. That ordering is the invariant ADR-0003 installs: before it, the guard ran on
+the raw request value while the DTO normalised it afterwards, and the disagreement was a
+bypass.
+
 | Endpoint | Input validated by | Session id validated? | Authorization point | Verdict |
 | :--- | :--- | :---: | :--- | :--- |
-| `POST /initiate` | `InitiateChunkRequest` | n/a (generated) | fingerprint reuse decides whether you are handed an existing session | ⚠ AF-005, AF-006 |
-| `POST /upload` | `UploadChunkRequest` | yes, regex `/i` | `assertSessionOwnership()` on the **raw** id, before normalisation | ⚠ **AF-001 bypass** |
-| `GET /status/{id}` | nothing | **no** | `assertSessionOwnership()` after the Action already resolved it | ⚠ AF-002, AF-009 |
-| `POST /complete` | inline `required\|string` | **no** | `assertSessionOwnership()` on the raw id | ⚠ AF-002, AF-010 |
-| `DELETE /cancel/{id}` | nothing | **no** | `assertSessionOwnership()` on the raw id | ⚠ AF-002, AF-010 |
+| `POST /initiate` | `InitiateChunkRequest` | n/a (generated) | fingerprint reuse, now owner-matched | ⚠ AF-005 |
+| `POST /upload` | `UploadChunkRequest` | yes, UUID regex | on the **canonical** id, before the DTO | ok |
+| `GET /status/{id}` | route pattern | yes, route pattern | after the Action resolved it | ⚠ AF-002, AF-009 |
+| `POST /complete` | `CompleteChunkRequest` | yes, UUID regex | on the canonical id | ⚠ AF-002 |
+| `DELETE /cancel/{id}` | route pattern | yes, route pattern | on the canonical id | ⚠ AF-002 |
 
 Every route carries the group middleware from
 `config('stateful-chunking.routes.middleware')`, which defaults to `['api']`, and — **only
@@ -54,7 +61,7 @@ sequenceDiagram
     AC->>RP: findSessionByFingerprint()
     alt fingerprint hit and owner matches
         RP-->>AC: existing session
-        Note over AC: ⚠ AF-005 no status check, and the newly<br/>declared name/size/hash are ignored<br/>⚠ AF-006 a null owner is treated as public
+        Note over AC: reuse requires an owner match — a null owner<br/>belongs to nobody, not to everybody<br/>⚠ AF-005 no status check, and the newly<br/>declared name/size/hash are still ignored
     else no hit
         AC->>AC: SessionId::generate() + new ChunkSession
         AC->>RP: saveSession() + fingerprint index
@@ -65,7 +72,7 @@ sequenceDiagram
     CT-->>CL: 201 ChunkingResponse::sessionInitiated<br/>allowlist projection, owner_id withheld
 ```
 
-## 2. `POST /upload` — the seam that AF-001 exploits
+## 2. `POST /upload` — the seam AF-001 exploited
 
 ```mermaid
 sequenceDiagram
@@ -83,21 +90,19 @@ sequenceDiagram
     Note over FR: session_id UUID regex is CASE-INSENSITIVE (/i)<br/>chunk_index has min:0 but no max
     FR->>CT: validated()
 
-    rect rgb(253, 232, 232)
-        CT->>RP: getSession($rawSessionId) ← un-normalised
-        RP-->>CT: null when the id case differs
-        CT->>CT: assertSessionOwnership(null) → returns early
-        Note over CT: ⚠ AF-001 the guard reads null as<br/>"no session to protect" when it really means<br/>"I looked it up wrong". No 403, and no<br/>UnauthorizedSessionAccessException audit entry.
+    rect rgb(231, 246, 236)
+        CT->>CT: canonicalSessionId() — SessionId normalises HERE,<br/>once, before any authorization decision
+        CT->>RP: getSession($sessionId) ← canonical
+        CT->>CT: assertSessionOwnership() → 403 on mismatch,<br/>and the attempt is audited
+        Note over CT: The canonical value is written back into<br/>$validated, so the DTO below cannot derive a<br/>different id than the one just authorized.
     end
 
     CT->>CT: resolve content: file → input('file') → raw body
     Note over CT: ⚠ AF-008 trim() rejects an all-NUL raw chunk<br/>⚠ VULN-SEC-001 body is in memory before the size check
     CT->>CT: reject if empty (422) or > chunk_size × 1.1 (413)
 
-    rect rgb(231, 246, 236)
-        CT->>AC: UploadChunkDTO — SessionId VO lowercases HERE
-        AC->>RP: getSession($dto->sessionId->value) → FOUND
-    end
+    CT->>AC: UploadChunkDTO — already canonical
+    AC->>RP: getSession($dto->sessionId->value) — same id as authorized
 
     AC->>AC: assertChunkIndexWithinBounds()
     alt chunk already completed
@@ -113,10 +118,12 @@ sequenceDiagram
     CT-->>CL: 200 ChunkingResponse::chunkUploaded
 ```
 
-The two shaded blocks are the defect. The ownership decision happens in the red block
-against the raw string; the normalisation that makes the lookup succeed happens in the
-green block, afterwards. **The invariant PR 1 installs**: the identifier is normalised
-exactly once, at the adapter boundary, *before* any authorization decision.
+The shaded block is where the defect used to live. Normalisation and the ownership
+decision now happen there together, in that order, and everything downstream is handed
+the same value. Previously the decision was made in that position against the raw string
+while `SessionId` normalised it two steps later, inside the DTO — so an upper-case UUID
+missed the guarded cache lookup, the guard read `null` as "no session to protect", and
+the Action then found the victim's session anyway.
 
 ## 3. `GET /status/{sessionId}`
 
@@ -131,8 +138,9 @@ sequenceDiagram
 
     CL->>RL: GET /status/{sessionId}
     RL->>CT: within quota
-    Note over CT: ⚠ no FormRequest: no authorize(),<br/>and the route parameter is unvalidated (AF-002, VULN-SEC-008)
-    CT->>AC: handle($sessionId)
+    Note over CT: route pattern already rejected any non-UUID<br/>⚠ AF-002 still: no FormRequest, so no authorize()
+    CT->>CT: canonicalSessionId()
+    CT->>AC: handle($canonicalId)
     AC->>RP: getSession()
     alt missing or expired
         RP-->>AC: null
@@ -161,7 +169,7 @@ sequenceDiagram
 
     CL->>RL: session_id
     RL->>CT: within quota
-    Note over CT: ⚠ inline validate(required|string) —<br/>no UUID format check (VULN-SEC-007)
+    Note over CT: CompleteChunkRequest enforces the UUID shape,<br/>then canonicalSessionId() normalises it
     CT->>RP: getSession($sessionId)
     CT->>CT: assertSessionOwnership()
     CT->>AC: handle($sessionId)
@@ -171,7 +179,7 @@ sequenceDiagram
         AC->>RP: getSession() → 404 if already consumed
         AC->>AC: isComplete() → 409 with pending_chunks
         AC->>ST: reassembleFile()
-        Note over ST: streams chunks, verifies total SHA-256,<br/>deletes the assembled file on mismatch,<br/>then purges the temp chunks<br/>⚠ AF-010 path built from the raw request string
+        Note over ST: streams chunks, verifies total SHA-256,<br/>deletes the assembled file on mismatch,<br/>then purges the temp chunks<br/>path derives from $session->sessionId->value,<br/>never from the request string
         AC->>TK: generateToken() — authenticated encryption<br/>under the app's cipher, own TTL
         AC->>RP: deleteSession()
         AC->>AC: dispatch FileReassembled

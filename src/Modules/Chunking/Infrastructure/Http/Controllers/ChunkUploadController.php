@@ -10,7 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\GetChunkStatusAction;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
@@ -20,7 +22,9 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionD
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\UploadChunkDTO;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\CompleteChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Responses\ChunkingResponse;
@@ -72,8 +76,46 @@ final class ChunkUploadController extends Controller
     }
 
     /**
+     * Canonicalise the session identifier exactly once, at the adapter boundary.
+     *
+     * Everything downstream — the ownership check, the repository lookup, the Action,
+     * and the filesystem paths derived from it — must be handed the same string. The
+     * guard used to run against the raw request value while {@see SessionId} lowercased
+     * it later, inside the DTO: an upper-case UUID therefore missed the cache on the
+     * guarded lookup, so the guard saw null and waved the request through, and the
+     * Action then resolved the victim's session anyway. Normalising here, before any
+     * authorization decision, is what closes that gap for good.
+     *
+     * A malformed identifier cannot name a session, so it is answered as a missing one
+     * rather than as a 500. In practice the FormRequests and the route patterns already
+     * reject those, but this method must not depend on callers having done so.
+     *
+     * ADR: Normalise caller and session identity at the adapter boundary.
+     * See: docs/decisions/0003-normalise-identity-at-the-adapter-boundary.md
+     */
+    private function canonicalSessionId(mixed $value): string
+    {
+        $raw = is_string($value) || is_numeric($value) ? (string) $value : '';
+
+        try {
+            return SessionId::fromString($raw)->value;
+        } catch (InvalidArgumentException $e) {
+            throw new SessionNotFoundException(
+                'Malformed session identifier rejected at the adapter boundary.',
+                ['session_id' => substr($raw, 0, 64)],
+                $e
+            );
+        }
+    }
+
+    /**
      * Enforce that the caller owns the session. Raises a domain exception (403) that
      * renders and audits itself, so the HTTP layer never handles the failure inline.
+     *
+     * Fails closed: a session with no owner belongs to nobody, not to everybody. Only
+     * the null-session branch is permissive, and only because the identifier reaching
+     * here is already canonical — so null means the session genuinely does not exist,
+     * and the Action that follows reports that.
      */
     private function assertSessionOwnership(?ChunkSession $session, Request $request): void
     {
@@ -83,7 +125,7 @@ final class ChunkUploadController extends Controller
 
         $attemptedBy = $this->resolveCurrentOwnerId($request);
 
-        if ($session->ownerId !== null && $session->ownerId !== $attemptedBy) {
+        if ($session->ownerId !== $attemptedBy) {
             throw new UnauthorizedSessionAccessException(
                 'Unauthorized attempt to access chunk session (IDOR prevented).',
                 [
@@ -125,9 +167,13 @@ final class ChunkUploadController extends Controller
         /** @var array<string, mixed> $validated */
         $validated = $request->validated();
 
-        $rawSessionId = isset($validated['session_id']) && (is_string($validated['session_id']) || is_numeric($validated['session_id'])) ? (string) $validated['session_id'] : '';
+        // Canonicalise first, then authorize, then hand the same value downstream —
+        // the DTO must not be able to derive a different identifier than the one the
+        // ownership check was made against.
+        $sessionId = $this->canonicalSessionId($validated['session_id'] ?? null);
+        $validated['session_id'] = $sessionId;
 
-        $existingSession = $this->stateRepository->getSession($rawSessionId);
+        $existingSession = $this->stateRepository->getSession($sessionId);
         $this->assertSessionOwnership($existingSession, $request);
 
         $content = '';
@@ -168,23 +214,26 @@ final class ChunkUploadController extends Controller
     }
 
     public function status(
+        Request $request,
         string $sessionId,
         GetChunkStatusAction $action
     ): Responsable {
-        $session = $action->handle($sessionId);
-        $this->assertSessionOwnership($session, request());
+        $canonicalId = $this->canonicalSessionId($sessionId);
+
+        $session = $action->handle($canonicalId);
+        $this->assertSessionOwnership($session, $request);
 
         return ChunkingResponse::sessionStatus($session);
     }
 
     public function complete(
-        Request $request,
+        CompleteChunkRequest $request,
         ReassembleFileAction $action
     ): Responsable {
-        $request->validate(['session_id' => 'required|string']);
+        /** @var array<string, mixed> $validated */
+        $validated = $request->validated();
 
-        $rawSessionId = $request->input('session_id');
-        $sessionId = is_string($rawSessionId) || is_numeric($rawSessionId) ? (string) $rawSessionId : '';
+        $sessionId = $this->canonicalSessionId($validated['session_id'] ?? null);
 
         $session = $this->stateRepository->getSession($sessionId);
         $this->assertSessionOwnership($session, $request);
@@ -206,17 +255,20 @@ final class ChunkUploadController extends Controller
     }
 
     public function cancel(
+        Request $request,
         string $sessionId,
         CancelChunkSessionAction $action
     ): Responsable {
-        $session = $this->stateRepository->getSession($sessionId);
-        $this->assertSessionOwnership($session, request());
+        $canonicalId = $this->canonicalSessionId($sessionId);
 
-        $action->handle($sessionId);
+        $session = $this->stateRepository->getSession($canonicalId);
+        $this->assertSessionOwnership($session, $request);
+
+        $action->handle($canonicalId);
 
         $this->logger()->info('Chunk upload session cancelled', [
-            'session_id' => $sessionId,
-            'ip' => request()->ip(),
+            'session_id' => $canonicalId,
+            'ip' => $request->ip(),
         ]);
 
         return ChunkingResponse::sessionCancelled();

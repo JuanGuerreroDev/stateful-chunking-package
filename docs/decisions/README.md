@@ -25,3 +25,4 @@ knowledge.
 | --- | ----- | ------ |
 | [ADR-0001](0001-adopt-architecture-decision-records.md) | Adopt Architecture Decision Records | accepted |
 | [ADR-0002](0002-adopt-immutable-response-envelope.md) | Adopt an immutable response envelope for the Chunking HTTP API | accepted |
+| [ADR-0003](0003-normalise-identity-at-the-adapter-boundary.md) | Normalise caller and session identity at the adapter boundary | proposed |

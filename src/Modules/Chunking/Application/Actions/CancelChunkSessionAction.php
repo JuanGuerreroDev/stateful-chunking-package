@@ -19,9 +19,14 @@ final class CancelChunkSessionAction
     {
         $session = $this->repository->getSession($sessionId);
         if ($session) {
-            $this->storage->deleteTemporaryChunks($sessionId, $session->totalChunks);
-            $this->repository->deleteSession($sessionId);
-            ChunkSessionCancelled::dispatch($sessionId);
+            // Derive every side effect from the resolved session's own identifier rather
+            // than from the string we were called with, so a caller that skipped
+            // canonicalisation cannot steer a filesystem path.
+            $resolvedId = $session->sessionId->value;
+
+            $this->storage->deleteTemporaryChunks($resolvedId, $session->totalChunks);
+            $this->repository->deleteSession($resolvedId);
+            ChunkSessionCancelled::dispatch($resolvedId);
         }
     }
 }

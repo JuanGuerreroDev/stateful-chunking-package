@@ -18,10 +18,13 @@ final class InitiateChunkSessionAction
 
     public function handle(InitiateSessionDTO $dto): ChunkSession
     {
-        // Reuse session if fingerprint matches and belongs to the same owner
+        // Reuse a session only when the fingerprint matches AND the caller is its owner.
+        // An unowned session is not a public one: treating a null owner as "matches
+        // anybody" made the fingerprint — a value the client chooses freely — enough to
+        // be handed someone else's session.
         if (! empty($dto->fingerprint)) {
             $existing = $this->repository->findSessionByFingerprint($dto->fingerprint);
-            if ($existing && ($existing->ownerId === null || $existing->ownerId === $dto->ownerId)) {
+            if ($existing && $existing->ownerId === $dto->ownerId) {
                 return $existing;
             }
         }

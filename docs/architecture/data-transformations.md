@@ -5,8 +5,8 @@ where it **enters**, where it is **validated**, where it is **normalised**, and 
 the code starts **trusting** it. Most defects in this package have been a disagreement
 between the last two.
 
-> **State of this document**: describes `main` at `3233508`, *before* the AF-001…AF-010
-> remediation. Rows marked **⚠** carry open findings from
+> **State of this document**: AF-001, AF-006 and AF-010 are **resolved**. Rows still
+> marked **⚠** carry open findings from
 > `docs/audits/scans/2026-09-08_final_offensive_audit.md`.
 
 ## The rule this table exists to enforce
@@ -15,30 +15,33 @@ between the last two.
 > normalised. Never the other way round.**
 
 That sentence is checkable against the table by eye, and it is what makes an entire
-class of bug visible rather than clever. Three of the ten audit findings are simply rows
-where the order is wrong:
+class of bug visible rather than clever. Three of the ten audit findings were simply rows
+where the order was wrong:
 
-| Finding | The inversion |
-| :--- | :--- |
-| **AF-001** | `session_id` is *trusted* (ownership decision) before it is *normalised* (`strtolower`) |
-| **AF-004** | `owner_id` is *derived twice*, by two different implementations, one of which never works |
-| **AF-010** | `session_id` reaches a filesystem path having *never* been normalised |
+| Finding | The inversion | State |
+| :--- | :--- | :--- |
+| **AF-001** | `session_id` was *trusted* (ownership decision) before it was *normalised* | closed by ADR-0003 |
+| **AF-010** | `session_id` reached a filesystem path having *never* been normalised | closed by ADR-0003 |
+| **AF-004** | `owner_id` is *derived twice*, by two implementations, one of which never works | open |
 
 None of them is visible reading a single file. All three are visible reading one table.
+That is the argument for keeping it accurate: [ADR-0003](../decisions/0003-normalise-identity-at-the-adapter-boundary.md)
+names this document as its compliance surface, so a change that moves where a value is
+validated, normalised or trusted is not finished until its row moves too.
 
 ---
 
 ## The table
 
-### `session_id` ⚠
+### `session_id`
 
 | | |
 | :--- | :--- |
 | **Enters as** | raw string — JSON body on `/upload` and `/complete`, route parameter on `/status` and `/cancel` |
-| **Validated at** | `UploadChunkRequest:33` — UUID regex, **case-insensitive** (`/i`). `/complete`: `required\|string` only. `/status`, `/cancel`: **nothing** |
-| **Normalised at** | `SessionId::__construct` → `strtolower()`, reached only via `UploadChunkDTO::fromArray` — so **only on `/upload`** |
-| **First trusted at** | the ownership comparison, the cache key `chunk_session:<id>`, and the filesystem paths `chunks_temp/<id>/` and `uploads/<id>/` |
-| **Status** | **AF-001**: on `/upload` the trust point precedes the normalisation point. VULN-SEC-007/008: the other three endpoints never check the format. AF-010: the raw request string, not the resolved entity's id, builds the paths |
+| **Validated at** | `UploadChunkRequest` and `CompleteChunkRequest` — the same case-insensitive UUID regex; `/status` and `/cancel` by route pattern, so a malformed id is a routing miss (404) and never reaches the controller |
+| **Normalised at** | `ChunkUploadController::canonicalSessionId()` — once, at the adapter boundary, as the first act of every endpoint that accepts an identifier |
+| **First trusted at** | the ownership comparison, the cache key `chunk_session:<id>`, and the filesystem paths `chunks_temp/<id>/` and `uploads/<id>/` — all reached **after** normalisation. Actions derive paths from `$session->sessionId->value`, not from the string they were called with |
+| **Status** | OK. Closed by [ADR-0003](../decisions/0003-normalise-identity-at-the-adapter-boundary.md): AF-001 was this row with its last two lines in the wrong order, and AF-010 was the path being built from a value that had skipped the middle one |
 
 ### `chunk_index`
 
@@ -118,7 +121,7 @@ None of them is visible reading a single file. All three are visible reading one
 | **Validated at** | n/a |
 | **Normalised at** | **twice, differently.** `ChunkUploadController::resolveCurrentOwnerId()` uses `$user->getAuthIdentifier()` → `user:<id>` \| `ip:<addr>`. `StatefulChunkingServiceProvider::configureRateLimiting()` independently uses `property_exists($user, 'id')` → `<id>` \| `<ip>` |
 | **First trusted at** | the ownership comparison in `assertSessionOwnership()`, and the rate-limit bucket |
-| **Status** | **AF-004**: `property_exists()` inspects *declared* properties, and Eloquent's `id` lives in `$attributes` behind `__get()` — so the limiter's branch is **always false** and all throttling is per-IP, contradicting README:139. **AF-006**: a `null` owner is treated as "belongs to everyone" by both the guard and fingerprint reuse, i.e. authorization fails **open**. Never echoed to clients: `ChunkingResponse::publicSessionData()` is an allowlist and omits it |
+| **Status** | **AF-004 open**: `property_exists()` inspects *declared* properties, and Eloquent's `id` lives in `$attributes` behind `__get()` — so the limiter's branch is **always false** and all throttling is per-IP, contradicting README:139. AF-006 is closed: the guard and fingerprint reuse now both require an exact match, so a `null` owner belongs to nobody rather than to everybody — access control denies by default. Never echoed to clients: `ChunkingResponse::publicSessionData()` is an allowlist and omits it |
 
 ### `upload_token`
 
