@@ -14,11 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture Decision Records under `docs/decisions/` (ADR-0001 adopting ADRs, ADR-0002 the immutable response envelope).
 - README compatibility matrix and a Tests status badge.
 
+### Removed
+
+- **BREAKING — the `require_auth` config option and the `STATEFUL_CHUNKING_REQUIRE_AUTH` env var are gone.** Authentication belongs to the host application, not to this package. The flag only ever gated `initiate` and `upload` — the two endpoints that happened to have a FormRequest — while `status`, `complete` and `cancel` stayed open, despite the README describing it as covering "the chunk endpoints". Declare your own guard instead, where one entry covers all five: `'routes' => ['middleware' => ['api', 'auth:sanctum']]`. **If you relied on `require_auth = true`, add that middleware entry before upgrading**, or `initiate` and `upload` lose their gate.
+
 ### Security
 
 - **Fixed an authorization bypass on `POST /upload`.** The ownership guard resolved the session with the raw request value while `SessionId` lowercased it afterwards, so an upper-case UUID missed the guarded cache lookup, the guard read the resulting `null` as "no session to protect", and the Action then found the victim's session anyway — accepting a foreign chunk **and emitting no audit entry**. Identifiers are now canonicalised once, at the adapter boundary, before any authorization decision (ADR-0003).
 - **Ownership now fails closed.** A session whose `ownerId` is `null` was treated as belonging to everybody by both the guard and fingerprint reuse; it now belongs to nobody. Host applications that create sessions programmatically through `StateRepositoryInterface` **must set an owner**, or those sessions become inaccessible over HTTP.
 - Actions derive filesystem paths from the resolved session's own identifier rather than from the caller-supplied string.
+- **Rate limits now actually partition per user.** The limiter resolved identity with `property_exists($user, 'id')`, which is always false for an Eloquent model because `id` lives in `$attributes` behind `__get()` — so every authenticated caller was silently bucketed by IP and users behind one NAT consumed each other's quota, the opposite of what the README promised. Caller identity is now resolved once, by `CallerIdentity`, shared with the ownership check. Bucket keys gained `user:` / `ip:` prefixes, so existing counters reset once on upgrade and a user id that looks like an address can no longer collide with it.
 
 ### Added
 

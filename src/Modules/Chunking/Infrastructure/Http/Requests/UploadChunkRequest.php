@@ -4,20 +4,14 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests;
 
-use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Validates the shape of a chunk upload. Authentication is the host application's
+ * concern — see {@see InitiateChunkRequest}.
+ */
 final class UploadChunkRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        if (config('stateful-chunking.require_auth', false)) {
-            return $this->user() instanceof Authenticatable;
-        }
-
-        return true;
-    }
-
     /**
      * @return array<string, mixed>
      */

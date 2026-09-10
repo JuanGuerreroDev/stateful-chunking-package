@@ -12,6 +12,7 @@ use Juanoecr\StatefulChunking\Console\Commands\ClearStaleSessionsCommand;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\CallerIdentity;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
 
@@ -70,14 +71,11 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
             return;
         }
 
-        $resolveKey = function (Request $request): string {
-            $user = $request->user();
-            if (is_object($user) && property_exists($user, 'id') && (is_string($user->id) || is_int($user->id))) {
-                return (string) $user->id;
-            }
-
-            return $request->ip() ?? '127.0.0.1';
-        };
+        // One answer to "who is calling?", shared with the controller's ownership check.
+        // This used to be a second, independent implementation built on
+        // property_exists($user, 'id'), which is always false for an Eloquent model —
+        // so authenticated callers were silently bucketed by IP.
+        $resolveKey = static fn (Request $request): string => CallerIdentity::resolve($request);
 
         $getConfigLimit = function (string $key, int $default): int {
             $val = config("stateful-chunking.rate_limits.{$key}", $default);

@@ -5,7 +5,7 @@ authorization decision is made**. That annotation is the reason this document ex
 the package's ownership guard is correct in isolation, and what breaks it is *when* it
 runs relative to validation and normalisation.
 
-> **State of this document**: AF-001, AF-006 and AF-010 are **resolved** — see
+> **State of this document**: AF-001, AF-002, AF-004, AF-006 and AF-010 are **resolved** — see
 > [ADR-0003](../decisions/0003-normalise-identity-at-the-adapter-boundary.md). Steps
 > still marked **⚠** are open findings from
 > `docs/audits/scans/2026-09-08_final_offensive_audit.md`; each remediation PR updates
@@ -24,9 +24,9 @@ bypass.
 | :--- | :--- | :---: | :--- | :--- |
 | `POST /initiate` | `InitiateChunkRequest` | n/a (generated) | fingerprint reuse, now owner-matched | ⚠ AF-005 |
 | `POST /upload` | `UploadChunkRequest` | yes, UUID regex | on the **canonical** id, before the DTO | ok |
-| `GET /status/{id}` | route pattern | yes, route pattern | after the Action resolved it | ⚠ AF-002, AF-009 |
-| `POST /complete` | `CompleteChunkRequest` | yes, UUID regex | on the canonical id | ⚠ AF-002 |
-| `DELETE /cancel/{id}` | route pattern | yes, route pattern | on the canonical id | ⚠ AF-002 |
+| `GET /status/{id}` | route pattern | yes, route pattern | after the Action resolved it | ⚠ AF-009 |
+| `POST /complete` | `CompleteChunkRequest` | yes, UUID regex | on the canonical id | ok |
+| `DELETE /cancel/{id}` | route pattern | yes, route pattern | on the canonical id | ok |
 
 Every route carries the group middleware from
 `config('stateful-chunking.routes.middleware')`, which defaults to `['api']`, and — **only
@@ -138,7 +138,7 @@ sequenceDiagram
 
     CL->>RL: GET /status/{sessionId}
     RL->>CT: within quota
-    Note over CT: route pattern already rejected any non-UUID<br/>⚠ AF-002 still: no FormRequest, so no authorize()
+    Note over CT: route pattern already rejected any non-UUID<br/>authentication, if any, was applied by the<br/>consumer's route middleware
     CT->>CT: canonicalSessionId()
     CT->>AC: handle($canonicalId)
     AC->>RP: getSession()

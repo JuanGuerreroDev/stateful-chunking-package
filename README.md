@@ -81,7 +81,6 @@ STATEFUL_CHUNKING_STORAGE_PATH=uploads
 
 # Security & Disclosure
 STATEFUL_CHUNKING_EXPOSE_SERVER_PATHS=false         # keep real filesystem paths out of API responses
-STATEFUL_CHUNKING_REQUIRE_AUTH=false                # require an authenticated user on the chunk endpoints (403 otherwise)
 STATEFUL_CHUNKING_LOG_CHANNEL=                      # dedicated log channel (empty = app default)
 
 # Rate Limiting & Throttling (Requests per minute per user/IP)
@@ -132,11 +131,49 @@ When `STATEFUL_CHUNKING_ROUTES_ENABLED` is true, the package automatically expos
 
 ---
 
+## Authentication & Authorization
+
+The package draws a deliberate line here, and it is worth understanding before you
+deploy.
+
+**Authentication is yours.** The package does not ship an auth flag and does not decide
+who your users are — your application already knows, and its guard is the right one.
+Declare it once and it gates all five endpoints at the framework level:
+
+```php
+// config/stateful-chunking.php
+'routes' => [
+    'middleware' => ['api', 'auth:sanctum'],
+],
+```
+
+A package-owned flag was tried and removed: it lived in the two FormRequests that
+happened to exist, so it covered `initiate` and `upload` and silently left `status`,
+`complete` and `cancel` open. Half a policy is worse than none, because the operator
+believes they have the whole one. The middleware entry above has no such gaps.
+
+**Authorization is ours.** Only this package knows what a chunk session is and who owns
+one, so it enforces that itself: every session records an owner, and `status`, `upload`,
+`complete` and `cancel` return `403` to anyone else. The owner is derived from whatever
+identity your guard established — `user:<id>` when authenticated, `ip:<address>` when
+not.
+
+Two consequences worth planning for:
+
+- **Without a guard, ownership degrades to the source address.** Callers behind a shared
+  NAT are one owner, and they can see and cancel each other's uploads. For anything
+  multi-tenant, authenticate.
+- **Ownership fails closed.** A session created programmatically through
+  `StateRepositoryInterface` without an `ownerId` belongs to nobody and is unreachable
+  over HTTP. If your application creates sessions outside the HTTP layer, set an owner.
+
+---
+
 ## Rate Limiting & DoS Protection
 
 In accordance with **OWASP API Security (API4:2023 - Unrestricted Resource Consumption)**, this package registers dedicated, named rate limiters (`stateful-chunking-*`) in `StatefulChunkingServiceProvider` to protect against server resource starvation and abusive traffic:
 
-- **Identity Resolution**: Limits are partitioned per individual user using `$request->user()->id` for authenticated requests (e.g. via `auth:sanctum`), and falling back gracefully to `$request->ip()` for guest uploads. Users sharing a corporate NAT/proxy do not throttle each other when authenticated.
+- **Identity Resolution**: Limits are partitioned by the same identity the ownership check uses — `user:<id>` from `$request->user()->getAuthIdentifier()` when your guard authenticated the caller, falling back to `ip:<address>` for guests. Users sharing a corporate NAT or proxy therefore do not throttle each other, **provided your middleware authenticates them**: with no guard in front of the routes there is no user to key on, and every caller behind that address shares one bucket.
 - **Differentiated Quotas**: While uploading chunks allows high throughput (`120 req/min`, up to 2 chunks/sec), session creation (`10 req/min`) and byte reassembly (`20 req/min`) are strictly capped to prevent disk inode exhaustion and CPU/worker starvation during stream operations.
 - **HTTP 429 Handling**: If a client exceeds the threshold, Laravel returns a standard `HTTP 429 Too Many Requests` status with a `Retry-After` header.
 - **Disabling for Tests**: Set `STATEFUL_CHUNKING_RATE_LIMIT_ENABLED=false` in your `.env.testing` or `phpunit.xml` to bypass throttling during integration tests.

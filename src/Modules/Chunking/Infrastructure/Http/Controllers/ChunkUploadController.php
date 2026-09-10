@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Controllers;
 
-use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -24,6 +23,7 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\CallerIdentity;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\CompleteChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
@@ -62,17 +62,7 @@ final class ChunkUploadController extends Controller
 
     private function resolveCurrentOwnerId(Request $request): string
     {
-        $user = $request->user();
-        if ($user instanceof Authenticatable) {
-            $authId = $user->getAuthIdentifier();
-            if ((is_string($authId) || is_int($authId)) && (string) $authId !== '') {
-                return 'user:'.(string) $authId;
-            }
-        }
-
-        $ip = $request->ip() ?: '127.0.0.1';
-
-        return 'ip:'.$ip;
+        return CallerIdentity::resolve($request);
     }
 
     /**
