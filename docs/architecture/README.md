@@ -103,7 +103,16 @@ until it is removed, rather than being laundered into a documented allowance.
 | :--- | :--- | :--- | :--- |
 | `StateRepositoryInterface` | driven (outbound) | "persist this session", "lock this session" | Laravel Cache, per-driver locking, TTL, lazy expiry |
 | `FileStorageInterface` | driven (outbound) | "store this chunk", "reassemble this file" | Laravel Storage, streams, temp paths |
+| `PrunableChunkStorageInterface` | driven (outbound), **optional** | "which staging directories are abandoned?" | directory listing, file mtimes and sizes |
 | The five Actions | driving (inbound) | — | the controller invokes them |
+
+`PrunableChunkStorageInterface` is deliberately **not** part of `FileStorageInterface`.
+Sweeping the staging area is a maintenance capability, not a step of the upload
+lifecycle, and an adapter that cannot list its own directories is still a valid storage
+adapter. Merging the two would force every consumer with a custom adapter to implement
+methods it has no use for, and the usual result of that is a stub that throws — the
+substitutability failure the segregated port exists to prevent. Callers check for it
+with `instanceof` and degrade with a warning.
 
 Port methods speak the domain's language (`saveSession`, `reassembleFile`), never the
 technology's (`redisSet`, `putObject`). Adding a backend means implementing a port and
@@ -116,6 +125,7 @@ graph LR
     SP["StatefulChunkingServiceProvider"]
     SP -->|"register(): bind"| B1["StateRepositoryInterface<br/>→ CacheStateRepository"]
     SP -->|"register(): bind"| B2["FileStorageInterface<br/>→ LocalStorageAdapter"]
+    SP -->|"boot(): Event::listen"| B6["ChunkSessionExpired<br/>→ PurgeExpiredSessionChunks"]
     SP -->|"boot(): rate limiters"| B3["throttle:stateful-chunking-*"]
     SP -->|"boot(): loadRoutesFrom"| B4["routes/api.php"]
     SP -->|"boot(): console"| B5["stateful-chunking:clear-stale"]

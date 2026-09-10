@@ -12,6 +12,7 @@ use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
 
 final class CacheStateRepository implements StateRepositoryInterface
 {
@@ -110,6 +111,11 @@ final class CacheStateRepository implements StateRepositoryInterface
         );
 
         if ($session->isExpired()) {
+            // Announce the expiry before erasing the state, so listeners still have a
+            // session to describe. PurgeExpiredSessionChunks uses this to remove the
+            // staging directory that deleteSession() cannot see.
+            ChunkSessionExpired::dispatch($session->sessionId->value, $session->totalChunks);
+
             $this->deleteSession($sessionId);
 
             return null;

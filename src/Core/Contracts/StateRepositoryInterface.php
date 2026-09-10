@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Juanoecr\StatefulChunking\Core\Contracts;
 
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
 
 /**
  * Interface StateRepositoryInterface
@@ -22,6 +23,12 @@ interface StateRepositoryInterface
 
     /**
      * Retrieve an active session by its unique ID, or null if expired or missing.
+     *
+     * This read is not free of side effects, and never has been: finding an expired
+     * session purges it. Implementations MUST also announce that purge by dispatching
+     * {@see ChunkSessionExpired}, because the caller has no other way to learn that a
+     * staging directory was just orphaned. Silent expiry is what let abandoned chunks
+     * accumulate forever (AF-003).
      */
     public function getSession(string $sessionId): ?ChunkSession;
 

@@ -26,3 +26,4 @@ knowledge.
 | [ADR-0001](0001-adopt-architecture-decision-records.md) | Adopt Architecture Decision Records | accepted |
 | [ADR-0002](0002-adopt-immutable-response-envelope.md) | Adopt an immutable response envelope for the Chunking HTTP API | accepted |
 | [ADR-0003](0003-normalise-identity-at-the-adapter-boundary.md) | Normalise caller and session identity at the adapter boundary | proposed |
+| [ADR-0004](0004-staged-chunk-lifecycle-and-garbage-collection.md) | Collect abandoned staging chunks by event and by sweep, not from the state repository | proposed |

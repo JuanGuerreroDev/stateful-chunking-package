@@ -6,10 +6,11 @@ namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage;
 
 use Illuminate\Support\Facades\Storage;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunking\Core\Contracts\PrunableChunkStorageInterface;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIntegrityException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\StorageFailureException;
 
-final class LocalStorageAdapter implements FileStorageInterface
+final class LocalStorageAdapter implements FileStorageInterface, PrunableChunkStorageInterface
 {
     private function getDiskName(): string
     {
@@ -161,5 +162,55 @@ final class LocalStorageAdapter implements FileStorageInterface
         if ($disk->exists($path)) {
             $disk->delete($path);
         }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function staleChunkDirectories(int $olderThanSeconds): array
+    {
+        $disk = Storage::disk($this->getDiskName());
+        $threshold = time() - max(0, $olderThanSeconds);
+        $stale = [];
+
+        foreach ($disk->directories('chunks_temp') as $directory) {
+            $sessionId = basename($directory);
+            $files = $disk->files($directory);
+
+            // No files means nothing to date and nothing worth keeping: a leftover
+            // directory from a session whose chunks were already removed.
+            if ($files === []) {
+                $stale[] = $sessionId;
+
+                continue;
+            }
+
+            // The most recent write is what dates the directory. Using the oldest
+            // chunk instead would collect a session that is still actively uploading
+            // a long file, which is precisely the mistake this sweep must not make.
+            $lastWrite = 0;
+            foreach ($files as $file) {
+                $lastWrite = max($lastWrite, $disk->lastModified($file));
+            }
+
+            if ($lastWrite <= $threshold) {
+                $stale[] = $sessionId;
+            }
+        }
+
+        return $stale;
+    }
+
+    public function chunkDirectorySizeInBytes(string $sessionId): int
+    {
+        $disk = Storage::disk($this->getDiskName());
+        $directory = sprintf('chunks_temp/%s', $sessionId);
+
+        $bytes = 0;
+        foreach ($disk->files($directory) as $file) {
+            $bytes += $disk->size($file);
+        }
+
+        return $bytes;
     }
 }

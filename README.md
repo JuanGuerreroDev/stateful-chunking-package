@@ -19,7 +19,7 @@ High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, 12, 
 - **Consumer DX Helpers & Validation Rule**: First-class `StatefulChunking` facade (`resolveToken`) and `ValidUploadToken` validation rule for clean, decoupled integration in downstream business modules.
 - **Configurable Storage**: Assembles files using Laravel's `Storage` facade (`local`, `s3`, `gcs`, etc.).
 - **Event-Driven Lifecycle**: Dispatches native Laravel events (`ChunkSessionInitiated`, `ChunkUploaded`, `FileReassembled`, `ChunkSessionCancelled`) for easy extension with virus scanners, WebSockets, and metrics.
-- **Garbage Collection (Stale Cleanup)**: Built-in Artisan command (`php artisan stateful-chunking:clear-stale`) for purging expired upload sessions and orphaned temporary files.
+- **Garbage Collection (Stale Cleanup)**: expired sessions have their staging directory purged automatically the moment the expiry is detected, plus a schedulable Artisan sweep (`php artisan stateful-chunking:clear-stale`) that collects the abandoned uploads nobody ever comes back to read. See [Maintenance & Garbage Collection](#maintenance--garbage-collection).
 - **Auto-Discovery & Zero Setup**: Auto-registers `StatefulChunkingServiceProvider` and REST API endpoints out-of-the-box.
 - **Customizable Routes**: Custom prefix, route middlewares (`auth:sanctum`, `api`), and config overrides.
 
@@ -98,22 +98,52 @@ STATEFUL_CHUNKING_RATE_CANCEL=20
 
 ## Maintenance & Garbage Collection
 
-To clean up expired upload sessions and orphaned temporary chunk files from storage, run the Artisan garbage collection command:
+Chunks are staged on disk under `chunks_temp/<sessionId>/` and removed when the upload
+reaches `/complete` or `/cancel`. Uploads that reach neither — the browser tab that was
+closed halfway — leave their chunks behind. The package frees them in two ways.
+
+### 1. Early purge on expiry (automatic)
+
+When any request touches a session that has outlived its TTL, the package dispatches
+`ChunkSessionExpired` and a built-in listener deletes that session's staging directory
+in the same request. Nothing to configure.
+
+This only fires if something reads the dead session, so it covers clients that come
+back, and not the ones that never do. That is what the sweep is for.
+
+### 2. Scheduled sweep (**required**, not optional)
 
 ```bash
 php artisan stateful-chunking:clear-stale
 ```
 
-### Scheduling Automatic Cleanup
+Without `--session` this walks the staging area and collects every directory that
+satisfies **both** conditions: its most recent chunk is older than `session_ttl`, **and**
+the state store has no live session for it. Both are needed — age alone would delete the
+chunks of a large file still uploading over a slow link.
 
-You can schedule this command in your application's `routes/console.php` (Laravel 11/12) or `app/Console/Kernel.php` (Laravel 10):
+The command reports what it actually did:
+
+```
+3 abandoned staging directories (1.412 GB) collected. 1 skipped as still live.
+```
+
+Use `--dry-run` to see the same report without deleting anything, and `--session=<id>`
+to clear one session and its chunks by hand.
+
+**Schedule it.** Without it, abandoned uploads are retained until the disk fills:
 
 ```php
 use Illuminate\Support\Facades\Schedule;
 
-// Run garbage collection every hour
 Schedule::command('stateful-chunking:clear-stale')->hourly();
 ```
+
+> **Custom storage adapters**: the sweep needs to enumerate the staging area, which is
+> declared by the separate `PrunableChunkStorageInterface`. The bundled
+> `LocalStorageAdapter` implements it. If you bind your own `FileStorageInterface` and it
+> does not, the command says so and collects nothing, rather than reporting a success it
+> did not earn.
 
 ---
 

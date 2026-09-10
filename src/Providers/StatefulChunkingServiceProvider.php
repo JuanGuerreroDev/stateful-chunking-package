@@ -6,14 +6,17 @@ namespace Juanoecr\StatefulChunking\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Juanoecr\StatefulChunking\Console\Commands\ClearStaleSessionsCommand;
 use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\RequestCallerIdentity;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Listeners\PurgeExpiredSessionChunks;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
 
@@ -50,6 +53,11 @@ final class StatefulChunkingServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Expiry is detected lazily, on read, by whichever request happens to touch a
+        // dead session. Wiring the purge here means that request also frees the disk,
+        // instead of leaving it for a sweep that may be hours away or unscheduled.
+        Event::listen(ChunkSessionExpired::class, PurgeExpiredSessionChunks::class);
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../../config/stateful-chunking.php' => config_path('stateful-chunking.php'),
