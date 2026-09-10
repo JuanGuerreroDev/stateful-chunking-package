@@ -21,9 +21,13 @@ runs relative to validation and normalisation.
 | `POST /complete` | inline `required\|string` | **no** | `assertSessionOwnership()` on the raw id | ⚠ AF-002, AF-010 |
 | `DELETE /cancel/{id}` | nothing | **no** | `assertSessionOwnership()` on the raw id | ⚠ AF-002, AF-010 |
 
-Every route additionally carries its own rate limiter
-(`throttle:stateful-chunking-<op>`) plus the group middleware from
-`config('stateful-chunking.routes.middleware')`, which defaults to `['api']`.
+Every route carries the group middleware from
+`config('stateful-chunking.routes.middleware')`, which defaults to `['api']`, and — **only
+while `rate_limits.enabled` is true** — its own limiter, `throttle:stateful-chunking-<op>`.
+That flag is worth knowing about: the limiter is the mitigating control several accepted
+audit findings lean on to bound storage amplification and orphan-chunk accumulation to a
+throughput rather than an unbounded quantity. Turning it off does not just relax a quota,
+it removes that bound.
 
 ---
 
@@ -168,7 +172,7 @@ sequenceDiagram
         AC->>AC: isComplete() → 409 with pending_chunks
         AC->>ST: reassembleFile()
         Note over ST: streams chunks, verifies total SHA-256,<br/>deletes the assembled file on mismatch,<br/>then purges the temp chunks<br/>⚠ AF-010 path built from the raw request string
-        AC->>TK: generateToken() — AES-256-CBC + HMAC, own TTL
+        AC->>TK: generateToken() — authenticated encryption<br/>under the app's cipher, own TTL
         AC->>RP: deleteSession()
         AC->>AC: dispatch FileReassembled
     end

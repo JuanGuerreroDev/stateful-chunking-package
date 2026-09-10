@@ -128,7 +128,7 @@ None of them is visible reading a single file. All three are visible reading one
 | **Validated at** | `Rules\ValidUploadToken` → `StatefulChunkingService::resolveToken()` → MAC verification, JSON decode, then `StagedFileDTO::isValid()` (the `is_valid` flag **and** `expiresAt`) |
 | **Normalised at** | n/a — opaque ciphertext |
 | **First trusted at** | the consumer resolves `temp_path` and `disk` from the decrypted payload |
-| **Status** | OK. `Crypt::encryptString` is AES-256-CBC with encrypt-then-MAC, so tampering with `temp_path` or `disk` fails closed and there is no padding oracle. The TTL is enforced and deliberately shorter than the session's (7200s vs 6h), so a leaked token dies first. Never logged — `ChunkUploadController::complete()` explicitly `unset()`s it from the audit context |
+| **Status** | OK. `Crypt::encryptString` uses the host application's `app.cipher`, which the package does not pin: Laravel allows `aes-128-cbc`, `aes-256-cbc` (the default), `aes-128-gcm` and `aes-256-gcm`. The CBC variants are encrypt-then-MAC and the GCM ones are AEAD, so under any of them tampering with `temp_path` or `disk` fails closed and there is no padding oracle — but the key length is the app's choice, not ours. The TTL is enforced and deliberately shorter than the session's (7200s vs 6h), so a leaked token dies first. Never logged — `ChunkUploadController::complete()` explicitly `unset()`s it from the audit context |
 
 ---
 
