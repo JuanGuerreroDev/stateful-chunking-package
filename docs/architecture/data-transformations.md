@@ -119,7 +119,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | :--- | :--- |
 | **Enters as** | not an input. Derived from the request's authenticated user, or its IP |
 | **Validated at** | n/a |
-| **Normalised at** | `CallerIdentity::resolve()` — one resolver, shared by the controller's ownership check and the provider's rate-limit key: `user:<id>` from `getAuthIdentifier()`, else `ip:<addr>` |
+| **Normalised at** | `ResolvesCallerIdentity` — one port, resolved from the container per request and shared by the controller's ownership check and the provider's rate-limit key. The default `RequestCallerIdentity` returns `user:<id>` from `getAuthIdentifier()`, else `ip:<addr>`; a consumer may rebind it (tenant, API key, calling service) and both readers follow |
 | **First trusted at** | the ownership comparison in `assertSessionOwnership()`, and the rate-limit bucket |
 | **Status** | OK. AF-004 was this row reading *"normalised twice, differently"*: the limiter had its own copy built on `property_exists($user, 'id')`, which is always false for an Eloquent model because `id` lives in `$attributes` behind `__get()` — so every authenticated caller was bucketed by IP and users behind one NAT ate each other's quota. AF-006 is closed too: guard and fingerprint reuse both require an exact match, so a `null` owner belongs to nobody. Never echoed to clients — `ChunkingResponse::publicSessionData()` is an allowlist and omits it |
 

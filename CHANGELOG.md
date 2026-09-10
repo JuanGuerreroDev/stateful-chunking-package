@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CompleteChunkRequest` validates `session_id` on `POST /complete` with the same UUID regex the other endpoints use; `/status` and `/cancel` gained route pattern constraints, so a malformed identifier is answered with 404 instead of reaching the domain.
 - Architecture documentation under `docs/architecture/`: the layer graph and dependency rule, a request lifecycle diagram per endpoint annotated with its authorization point, and a table recording where every input is validated, normalised and first trusted.
 - `tests/Unit/Architecture/LayerDependencyRuleTest.php` enforces the dependency rule in CI, so it cannot drift back into prose.
+- **Caller identity is now an extension point.** Bind `ResolvesCallerIdentity` to your own implementation and both session ownership and rate-limit buckets follow it — for deployments whose notion of a caller is a tenant, an API key or a calling service rather than a user or an address. The default `RequestCallerIdentity` keeps the previous behaviour, so consumers who bind nothing see no change.
 
 ### Fixed
 

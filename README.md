@@ -167,6 +167,22 @@ Two consequences worth planning for:
   `StateRepositoryInterface` without an `ownerId` belongs to nobody and is unreachable
   over HTTP. If your application creates sessions outside the HTTP layer, set an owner.
 
+### Custom caller identity
+
+"A user or an address" is not everyone's model. If yours is a tenant, an API key or a
+calling service, bind your own resolver — session ownership **and** rate-limit buckets
+both follow it, because they read the same port:
+
+```php
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
+
+$this->app->bind(ResolvesCallerIdentity::class, TenantCallerIdentity::class);
+```
+
+Your implementation returns a string that is **stable** for the same caller across
+requests and **distinct** between callers who must not see each other's uploads. Namespace
+it (`tenant:7:user:42`) so one kind of identity cannot collide with another.
+
 ---
 
 ## Rate Limiting & DoS Protection

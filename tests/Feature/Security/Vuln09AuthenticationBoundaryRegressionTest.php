@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\CallerIdentity;
+use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\RequestCallerIdentity;
 use Juanoecr\StatefulChunking\Tests\TestCase;
 
 /**
@@ -29,7 +29,7 @@ use Juanoecr\StatefulChunking\Tests\TestCase;
  *    endpoints with the app's own guard.
  *  - The package DOES authorize: only it knows what a session is and who owns one.
  *    For that it reads whatever identity the consumer's guard established — through
- *    exactly one resolver, {@see CallerIdentity}.
+ *    exactly one resolver, {@see RequestCallerIdentity}.
  *
  * The second half is where AF-004 lived: the rate limiter resolved identity with
  * `property_exists($user, 'id')`, which is always false for an Eloquent model because
@@ -103,7 +103,7 @@ class Vuln09AuthenticationBoundaryRegressionTest extends TestCase
         $request = Request::create('/api/chunks/initiate', 'POST');
         $request->setUserResolver(fn (): Authenticatable => $user);
 
-        $this->assertSame('user:42', CallerIdentity::resolve($request));
+        $this->assertSame('user:42', (new RequestCallerIdentity)->resolve($request));
 
         // Why the previous implementation was dead code: Eloquent keeps `id` in
         // $attributes behind __get(), so it is not a declared property.
@@ -114,7 +114,7 @@ class Vuln09AuthenticationBoundaryRegressionTest extends TestCase
     {
         $request = Request::create('/api/chunks/initiate', 'POST', server: ['REMOTE_ADDR' => '198.51.100.10']);
 
-        $this->assertSame('ip:198.51.100.10', CallerIdentity::resolve($request));
+        $this->assertSame('ip:198.51.100.10', (new RequestCallerIdentity)->resolve($request));
     }
 
     /**
@@ -130,7 +130,7 @@ class Vuln09AuthenticationBoundaryRegressionTest extends TestCase
 
         $guest = Request::create('/api/chunks/initiate', 'POST', server: ['REMOTE_ADDR' => '198.51.100.10']);
 
-        $this->assertNotSame(CallerIdentity::resolve($authenticated), CallerIdentity::resolve($guest));
+        $this->assertNotSame((new RequestCallerIdentity)->resolve($authenticated), (new RequestCallerIdentity)->resolve($guest));
     }
 
     /**
