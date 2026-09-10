@@ -165,7 +165,7 @@ sequenceDiagram
     rect rgb(231, 246, 236)
         AC->>RP: withSessionLock() — serialises reassembly (LIVE-002 fix)
         AC->>RP: getSession() → 404 if already consumed
-        AC->>AC: isComplete() → 422 with pending_chunks
+        AC->>AC: isComplete() → 409 with pending_chunks
         AC->>ST: reassembleFile()
         Note over ST: streams chunks, verifies total SHA-256,<br/>deletes the assembled file on mismatch,<br/>then purges the temp chunks<br/>⚠ AF-010 path built from the raw request string
         AC->>TK: generateToken() — AES-256-CBC + HMAC, own TTL
@@ -230,9 +230,9 @@ controller.
 | :--- | :---: |
 | `SessionNotFoundException` | 404 |
 | `UnauthorizedSessionAccessException` | 403 |
-| `SessionNotReadyException` | 422 |
+| `SessionNotReadyException` | 409 |
 | `ChunkIntegrityException` | 422 |
-| `ChunkIndexOutOfBoundsException` | 400 |
+| `ChunkIndexOutOfBoundsException` | 422 |
 | `UploadBudgetExceededException` | 413 |
 | `StorageFailureException` | 500 |
 

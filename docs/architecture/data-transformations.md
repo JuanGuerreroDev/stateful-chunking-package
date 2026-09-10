@@ -78,7 +78,7 @@ None of them is visible reading a single file. All three are visible reading one
 | **Validated at** | `InitiateChunkRequest:48-101` — `max:255`, charset `^[a-zA-Z0-9._-]+$`, then a closure: dot-file ban, trailing dot/space ban, at least one extension segment, optional whitelist, and **every** segment after the stem checked against the forbidden list (double-extension defence) |
 | **Normalised at** | never — stored verbatim; `basename()` is applied at reassembly time |
 | **First trusted at** | the final path `uploads/<sessionId>/<basename(fileName)>` |
-| **Status** | OK for traversal: the anchored charset already excludes `/`, `\` and `..`, and `basename()` is belt-and-braces. **LIVE-004** is an accepted trade-off: validation is by declared extension only, with no content or real-MIME inspection. The staged-token pattern keeps the file outside the webroot, so verifying the real type is the consumer's job before it moves the file |
+| **Status** | OK for traversal, but note *which* control earns that: the anchored charset excludes `/` and `\`, so no separator can appear — it does **not** exclude `..`, since dots are in the charset. A bare `..` is rejected by the dot-file guard (`str_starts_with($strValue, '.')`), and `basename()` is belt-and-braces. Relaxing that guard to allow leading-dot names would re-open `file_name = ".."`, whose assembled path `uploads/<sessionId>/..` resolves to the parent directory. **LIVE-004** is an accepted trade-off: validation is by declared extension only, with no content or real-MIME inspection. The staged-token pattern keeps the file outside the webroot, so verifying the real type is the consumer's job before it moves the file |
 
 ### `fingerprint` ⚠
 
