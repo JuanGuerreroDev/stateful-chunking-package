@@ -4,20 +4,16 @@ declare(strict_types=1);
 
 namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests;
 
-use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Validates the shape of an initiate request. Authentication is deliberately absent:
+ * it is the host application's concern, declared through
+ * `stateful-chunking.routes.middleware` (for example `['api', 'auth:sanctum']`), which
+ * gates every endpoint uniformly with the app's own guard.
+ */
 final class InitiateChunkRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        if (config('stateful-chunking.require_auth', false)) {
-            return $this->user() instanceof Authenticatable;
-        }
-
-        return true;
-    }
-
     /**
      * @return array<string, mixed>
      */

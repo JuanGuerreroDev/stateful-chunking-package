@@ -5,8 +5,8 @@ where it **enters**, where it is **validated**, where it is **normalised**, and 
 the code starts **trusting** it. Most defects in this package have been a disagreement
 between the last two.
 
-> **State of this document**: AF-001, AF-006 and AF-010 are **resolved**. Rows still
-> marked **⚠** carry open findings from
+> **State of this document**: AF-001, AF-002, AF-004, AF-006 and AF-010 are **resolved**.
+> Rows still marked **⚠** carry open findings from
 > `docs/audits/scans/2026-09-08_final_offensive_audit.md`.
 
 ## The rule this table exists to enforce
@@ -22,7 +22,7 @@ where the order was wrong:
 | :--- | :--- | :--- |
 | **AF-001** | `session_id` was *trusted* (ownership decision) before it was *normalised* | closed by ADR-0003 |
 | **AF-010** | `session_id` reached a filesystem path having *never* been normalised | closed by ADR-0003 |
-| **AF-004** | `owner_id` is *derived twice*, by two implementations, one of which never works | open |
+| **AF-004** | `owner_id` was *derived twice*, by two implementations, one of which never worked | closed by one shared resolver |
 
 None of them is visible reading a single file. All three are visible reading one table.
 That is the argument for keeping it accurate: [ADR-0003](../decisions/0003-normalise-identity-at-the-adapter-boundary.md)
@@ -113,15 +113,15 @@ validated, normalised or trusted is not finished until its row moves too.
 | **First trusted at** | `ChunkSession::byteBudget()` and `assertChunkIndexWithinBounds()` |
 | **Status** | The two-sided bound is the **LIVE-001** fix: it is what stops a 1-byte declaration from staging gigabytes. **AF-007**: `assertWithinByteBudget()` reads `uploadedBytes` outside the lock that increments it, so N concurrent uploads can each pass the same check |
 
-### `owner_id` ⚠ — derived, never client input
+### `owner_id` — derived, never client input
 
 | | |
 | :--- | :--- |
 | **Enters as** | not an input. Derived from the request's authenticated user, or its IP |
 | **Validated at** | n/a |
-| **Normalised at** | **twice, differently.** `ChunkUploadController::resolveCurrentOwnerId()` uses `$user->getAuthIdentifier()` → `user:<id>` \| `ip:<addr>`. `StatefulChunkingServiceProvider::configureRateLimiting()` independently uses `property_exists($user, 'id')` → `<id>` \| `<ip>` |
+| **Normalised at** | `CallerIdentity::resolve()` — one resolver, shared by the controller's ownership check and the provider's rate-limit key: `user:<id>` from `getAuthIdentifier()`, else `ip:<addr>` |
 | **First trusted at** | the ownership comparison in `assertSessionOwnership()`, and the rate-limit bucket |
-| **Status** | **AF-004 open**: `property_exists()` inspects *declared* properties, and Eloquent's `id` lives in `$attributes` behind `__get()` — so the limiter's branch is **always false** and all throttling is per-IP, contradicting README:139. AF-006 is closed: the guard and fingerprint reuse now both require an exact match, so a `null` owner belongs to nobody rather than to everybody — access control denies by default. Never echoed to clients: `ChunkingResponse::publicSessionData()` is an allowlist and omits it |
+| **Status** | OK. AF-004 was this row reading *"normalised twice, differently"*: the limiter had its own copy built on `property_exists($user, 'id')`, which is always false for an Eloquent model because `id` lives in `$attributes` behind `__get()` — so every authenticated caller was bucketed by IP and users behind one NAT ate each other's quota. AF-006 is closed too: guard and fingerprint reuse both require an exact match, so a `null` owner belongs to nobody. Never echoed to clients — `ChunkingResponse::publicSessionData()` is an allowlist and omits it |
 
 ### `upload_token`
 
