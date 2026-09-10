@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities;
 
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIndexOutOfBoundsException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\ChunkIndexOutOfBoundsException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
 
 final class ChunkSession
 {

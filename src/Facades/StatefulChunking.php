@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Facades;
+namespace Juanoecr\StatefulChunkingUpload\Facades;
 
 use Illuminate\Support\Facades\Facade;
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO;
+use Juanoecr\StatefulChunkingUpload\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\DTOs\StagedFileDTO;
 
 /**
  * @method static string generateToken(string $sessionId, string $tempPath, string $fileName, int $fileSize, string $hash, ?string $disk = null, ?int $ttl = null)

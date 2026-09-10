@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Listeners;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Listeners;
 
-use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\ChunkSessionExpired;
 
 /**
  * Deletes the staging directory of a session that has just expired.

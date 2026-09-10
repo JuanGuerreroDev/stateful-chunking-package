@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Contracts;
 
 use Illuminate\Http\Request;
 

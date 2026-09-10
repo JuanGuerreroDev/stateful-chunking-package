@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Drivers;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Drivers;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 class FileDriverFeatureTest extends TestCase
 {
@@ -15,7 +15,7 @@ class FileDriverFeatureTest extends TestCase
         parent::setUp();
 
         config()->set('cache.default', 'file');
-        config()->set('stateful-chunking.cache_store', 'file');
+        config()->set('stateful-chunking-upload.cache_store', 'file');
         Storage::fake('local');
     }
 

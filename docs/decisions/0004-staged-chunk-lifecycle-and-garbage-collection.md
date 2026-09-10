@@ -21,7 +21,7 @@ method, so the moment a session was found to be dead, its state vanished and its
 became unreachable — no longer described by anything, and therefore never deletable by
 anything either.
 
-Meanwhile `stateful-chunking:clear-stale`, invoked without `--session`, did this:
+Meanwhile `stateful-chunking-upload:clear-stale`, invoked without `--session`, did this:
 
 ```php
 $this->info('Stateful Chunking garbage collection command executed successfully.');

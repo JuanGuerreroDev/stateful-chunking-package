@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Unit\Architecture;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Unit\Architecture;
 
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -65,7 +65,7 @@ class LayerDependencyRuleTest extends TestCase
             'Illuminate\Support\Facades\Storage',
         ],
         'src/Core/Services/StatefulChunkingService.php' => [
-            'Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO',
+            'Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\DTOs\StagedFileDTO',
         ],
     ];
 

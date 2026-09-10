@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * Locks the HTTP contract produced by the typed domain exceptions: each domain
@@ -26,7 +26,7 @@ class DomainExceptionMappingTest extends TestCase
         parent::setUp();
         Storage::fake('local');
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            RateLimiter::clear('stateful-chunking-'.$op);
+            RateLimiter::clear('stateful-chunking-upload-'.$op);
         }
     }
 
@@ -55,7 +55,7 @@ class DomainExceptionMappingTest extends TestCase
     public function test_reassembling_incomplete_session_maps_to_409(): void
     {
         // Declare a 2-chunk session but upload nothing, then request completion.
-        $chunkSize = (int) config('stateful-chunking.chunk_size_bytes', 2097152);
+        $chunkSize = (int) config('stateful-chunking-upload.chunk_size_bytes', 2097152);
         $init = $this->postJson('/api/chunks/initiate', [
             'file_name' => 'incomplete.bin',
             'file_size' => $chunkSize + 10,   // needs 2 chunks

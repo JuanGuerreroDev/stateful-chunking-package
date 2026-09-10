@@ -4,7 +4,7 @@
 
 Handling multipart chunked uploads introduces specific threat vectors associated with **resource exhaustion** and **denial of service (DoS)**. According to the **OWASP API Security Top 10 (API4:2023 - Unrestricted Resource Consumption)**, endpoints accepting state creation and file payloads must implement strict, differentiated throttling.
 
-The `juanoecr/stateful-chunking` package enforces multi-tier rate limiting out-of-the-box using Laravel's native `RateLimiter` facade and `throttle` route middleware.
+The `juanoecr/stateful-chunking-upload` package enforces multi-tier rate limiting out-of-the-box using Laravel's native `RateLimiter` facade and `throttle` route middleware.
 
 ---
 
@@ -12,7 +12,7 @@ The `juanoecr/stateful-chunking` package enforces multi-tier rate limiting out-o
 
 | Threat Vector | Description | Package Mitigation |
 | :--- | :--- | :--- |
-| **Inode & Storage Exhaustion** | An attacker initiates many sessions and uploads chunks it never completes, leaving staging directories behind. The initiate limit caps how many sessions are opened; the **upload** limit is what caps bytes on disk, at roughly 240 MB/min per caller with the shipped defaults. | Differentiated limit on `/api/chunks/initiate` (10 req/min), plus two collectors: the `ChunkSessionExpired` listener frees a session's directory the moment its expiry is detected, and the `stateful-chunking:clear-stale` sweep collects directories that are both older than `session_ttl` and unknown to the state store. **Scheduling the sweep is required**, not optional — see [ADR-0004](../decisions/0004-staged-chunk-lifecycle-and-garbage-collection.md). |
+| **Inode & Storage Exhaustion** | An attacker initiates many sessions and uploads chunks it never completes, leaving staging directories behind. The initiate limit caps how many sessions are opened; the **upload** limit is what caps bytes on disk, at roughly 240 MB/min per caller with the shipped defaults. | Differentiated limit on `/api/chunks/initiate` (10 req/min), plus two collectors: the `ChunkSessionExpired` listener frees a session's directory the moment its expiry is detected, and the `stateful-chunking-upload:clear-stale` sweep collects directories that are both older than `session_ttl` and unknown to the state store. **Scheduling the sweep is required**, not optional — see [ADR-0004](../decisions/0004-staged-chunk-lifecycle-and-garbage-collection.md). |
 | **I/O & Worker Starvation** | An attacker floods the upload endpoint with micro-requests to saturate disk write buffers and PHP-FPM worker threads. | Differentiated limit on `/api/chunks/upload` (120 req/min) allowing fast legitimate sequential uploads while capping abuse. |
 | **CPU & Memory Spike on Assembly** | Reassembling large files (e.g. 10 GB) consumes CPU for stream copying and full-file SHA-256 validation. Mass concurrent calls could crash the server. | Differentiated limit on `/api/chunks/complete` (20 req/min) backed by atomic distributed cache locking (`lockProvider`). |
 | **Tampered State & Lock Contention** | Repeated polling or status checking to exhaust cache bandwidth. | Differentiated limit on `/api/chunks/status` (60 req/min). |
@@ -21,15 +21,15 @@ The `juanoecr/stateful-chunking` package enforces multi-tier rate limiting out-o
 
 ## 3. Differentiated Rate Limiters Specification
 
-The package registers named limiters in `StatefulChunkingServiceProvider` under the `stateful-chunking-*` namespace:
+The package registers named limiters in `StatefulChunkingServiceProvider` under the `stateful-chunking-upload-*` namespace:
 
 | Limiter Name | Protected Endpoint | HTTP Method | Default Limit | Rationale |
 | :--- | :--- | :--- | :--- | :--- |
-| `stateful-chunking-initiate` | `/api/chunks/initiate` | `POST` | **10 req / min** | Prevents session spamming and orphan session generation. |
-| `stateful-chunking-upload` | `/api/chunks/upload` | `POST` | **120 req / min** | Allows up to 2 chunks/sec per client (supports fast uploads and small chunks). |
-| `stateful-chunking-status` | `/api/chunks/status/{sessionId}` | `GET` | **60 req / min** | Allows client polling up to once per second during recovery. |
-| `stateful-chunking-complete` | `/api/chunks/complete` | `POST` | **20 req / min** | Protects CPU and disk streams during final byte assembly and hashing. |
-| `stateful-chunking-cancel` | `/api/chunks/cancel/{sessionId}` | `DELETE` | **20 req / min** | Throttles session aborts and associated storage purge operations. |
+| `stateful-chunking-upload.initiate` | `/api/chunks/initiate` | `POST` | **10 req / min** | Prevents session spamming and orphan session generation. |
+| `stateful-chunking-upload.upload` | `/api/chunks/upload` | `POST` | **120 req / min** | Allows up to 2 chunks/sec per client (supports fast uploads and small chunks). |
+| `stateful-chunking-upload.status` | `/api/chunks/status/{sessionId}` | `GET` | **60 req / min** | Allows client polling up to once per second during recovery. |
+| `stateful-chunking-upload.complete` | `/api/chunks/complete` | `POST` | **20 req / min** | Protects CPU and disk streams during final byte assembly and hashing. |
+| `stateful-chunking-upload.cancel` | `/api/chunks/cancel/{sessionId}` | `DELETE` | **20 req / min** | Throttles session aborts and associated storage purge operations. |
 
 ---
 
@@ -52,7 +52,7 @@ got all three wrong.
 **Partitioning per user depends on your middleware.** The package does not authenticate.
 If no guard runs in front of the routes there is no user to key on, and every caller
 behind one address shares a bucket. Declare your guard in
-`stateful-chunking.routes.middleware`.
+`stateful-chunking-upload.routes.middleware`.
 
 **The prefixes are load-bearing.** Keys are namespaced `user:` and `ip:` so a user whose
 id happens to look like an address cannot land in that address's bucket. This is enforced
@@ -85,25 +85,25 @@ callers who must not see each other's uploads, and scheme-qualified as
 
 ## 5. Configuration & Overrides
 
-All thresholds can be tuned in `config/stateful-chunking.php` or via environment variables in `.env`:
+All thresholds can be tuned in `config/stateful-chunking-upload.php` or via environment variables in `.env`:
 
 ```env
 # Enable or disable throttling across all package routes
-STATEFUL_CHUNKING_RATE_LIMIT_ENABLED=true
+STATEFUL_CHUNKING_UPLOAD_RATE_LIMIT_ENABLED=true
 
 # Custom per-minute limits per operation
-STATEFUL_CHUNKING_RATE_INITIATE=10
-STATEFUL_CHUNKING_RATE_UPLOAD=120
-STATEFUL_CHUNKING_RATE_STATUS=60
-STATEFUL_CHUNKING_RATE_COMPLETE=20
-STATEFUL_CHUNKING_RATE_CANCEL=20
+STATEFUL_CHUNKING_UPLOAD_RATE_INITIATE=10
+STATEFUL_CHUNKING_UPLOAD_RATE_UPLOAD=120
+STATEFUL_CHUNKING_UPLOAD_RATE_STATUS=60
+STATEFUL_CHUNKING_UPLOAD_RATE_COMPLETE=20
+STATEFUL_CHUNKING_UPLOAD_RATE_CANCEL=20
 ```
 
 ### Disabling Throttling in Tests / CI
 In integration testing or local benchmarking suites, disable rate limits in `phpunit.xml` or `.env.testing`:
 
 ```xml
-<env name="STATEFUL_CHUNKING_RATE_LIMIT_ENABLED" value="false"/>
+<env name="STATEFUL_CHUNKING_UPLOAD_RATE_LIMIT_ENABLED" value="false"/>
 ```
 
 ---
@@ -114,7 +114,7 @@ In multi-node architectures (behind load balancers like AWS ALB, Cloudflare, or 
 
 Ensure your host application's default cache store or chunking cache store uses a centralized store:
 ```env
-STATEFUL_CHUNKING_CACHE_STORE=redis
+STATEFUL_CHUNKING_UPLOAD_CACHE_STORE=redis
 # or default store:
 CACHE_STORE=redis
 ```

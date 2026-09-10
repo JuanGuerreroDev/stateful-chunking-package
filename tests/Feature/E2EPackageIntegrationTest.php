@@ -1,11 +1,11 @@
 <?php
 
-namespace Juanoecr\StatefulChunking\Tests\Feature;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Facades\StatefulChunking;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Facades\StatefulChunking;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 class E2EPackageIntegrationTest extends TestCase
 {

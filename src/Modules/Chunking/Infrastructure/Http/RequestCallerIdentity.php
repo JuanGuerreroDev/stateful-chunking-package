@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
 
 /**
  * The default identity: whoever the host application's guard authenticated, or the
@@ -17,7 +17,7 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\Res
  * question from a different part of the request.
  *
  * The package does not authenticate; that is the consumer's guard, declared in
- * `stateful-chunking.routes.middleware`. It does authorize, and for that it reads
+ * `stateful-chunking-upload.routes.middleware`. It does authorize, and for that it reads
  * whatever identity that guard established — through this one resolver, so that the
  * session owner and the rate-limit bucket can never disagree about who is calling.
  * They did once: the limiter had its own copy built on `property_exists($user, 'id')`,

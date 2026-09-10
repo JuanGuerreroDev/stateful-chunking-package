@@ -10,7 +10,6 @@ docker-compose.yml
 /build/
 /coverage/
 .phpunit.cache
-testbench.yaml
 /scratch/
 /docs/proposals/
 /.claude

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Controllers;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Controllers;
 
 use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\Request;
@@ -10,25 +10,25 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\GetChunkStatusAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\ReassembleFileAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\UploadChunkAction;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\UploadChunkDTO;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\CompleteChunkRequest;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Responses\ChunkingResponse;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\Actions\GetChunkStatusAction;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\Actions\ReassembleFileAction;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\Actions\UploadChunkAction;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\DTOs\UploadChunkDTO;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\ChunkingException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests\CompleteChunkRequest;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Responses\ChunkingResponse;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -61,7 +61,7 @@ final class ChunkUploadController extends Controller
 
     private function logger(): LoggerInterface
     {
-        $channel = config('stateful-chunking.log_channel');
+        $channel = config('stateful-chunking-upload.log_channel');
         $channelName = is_string($channel) ? $channel : null;
 
         return Log::channel($channelName);
@@ -220,7 +220,7 @@ final class ChunkUploadController extends Controller
             return ChunkingResponse::inputError('Chunk content cannot be empty', 422);
         }
 
-        $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+        $rawChunkSize = config('stateful-chunking-upload.chunk_size_bytes', 2097152);
         $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
         $maxAllowedBytes = (int) ($chunkSizeBytes * 1.1);
 

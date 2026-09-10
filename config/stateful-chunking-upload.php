@@ -13,8 +13,8 @@ return [
     |
     */
     'routes' => [
-        'enabled' => env('STATEFUL_CHUNKING_ROUTES_ENABLED', true),
-        'prefix' => env('STATEFUL_CHUNKING_ROUTE_PREFIX', 'api/chunks'),
+        'enabled' => env('STATEFUL_CHUNKING_UPLOAD_ROUTES_ENABLED', true),
+        'prefix' => env('STATEFUL_CHUNKING_UPLOAD_ROUTE_PREFIX', 'api/chunks'),
         'middleware' => ['api'],
     ],
 
@@ -28,12 +28,12 @@ return [
     |
     */
     'rate_limits' => [
-        'enabled' => (bool) env('STATEFUL_CHUNKING_RATE_LIMIT_ENABLED', true),
-        'initiate' => (int) env('STATEFUL_CHUNKING_RATE_INITIATE', 10),
-        'upload' => (int) env('STATEFUL_CHUNKING_RATE_UPLOAD', 120),
-        'status' => (int) env('STATEFUL_CHUNKING_RATE_STATUS', 60),
-        'complete' => (int) env('STATEFUL_CHUNKING_RATE_COMPLETE', 20),
-        'cancel' => (int) env('STATEFUL_CHUNKING_RATE_CANCEL', 20),
+        'enabled' => (bool) env('STATEFUL_CHUNKING_UPLOAD_RATE_LIMIT_ENABLED', true),
+        'initiate' => (int) env('STATEFUL_CHUNKING_UPLOAD_RATE_INITIATE', 10),
+        'upload' => (int) env('STATEFUL_CHUNKING_UPLOAD_RATE_UPLOAD', 120),
+        'status' => (int) env('STATEFUL_CHUNKING_UPLOAD_RATE_STATUS', 60),
+        'complete' => (int) env('STATEFUL_CHUNKING_UPLOAD_RATE_COMPLETE', 20),
+        'cancel' => (int) env('STATEFUL_CHUNKING_UPLOAD_RATE_CANCEL', 20),
     ],
 
     /*
@@ -48,9 +48,9 @@ return [
     | leaked token expires well before the upload session it was minted from.
     |
     */
-    'chunk_size_bytes' => (int) env('STATEFUL_CHUNKING_SIZE_BYTES', 2097152),
-    'max_file_size_bytes' => (int) env('STATEFUL_CHUNKING_MAX_FILE_SIZE_BYTES', 10737418240), // 10 GB
-    'max_total_chunks' => (int) env('STATEFUL_CHUNKING_MAX_TOTAL_CHUNKS', 10000),
+    'chunk_size_bytes' => (int) env('STATEFUL_CHUNKING_UPLOAD_SIZE_BYTES', 2097152),
+    'max_file_size_bytes' => (int) env('STATEFUL_CHUNKING_UPLOAD_MAX_FILE_SIZE_BYTES', 10737418240), // 10 GB
+    'max_total_chunks' => (int) env('STATEFUL_CHUNKING_UPLOAD_MAX_TOTAL_CHUNKS', 10000),
     'forbidden_extensions' => [
         'php', 'phar', 'phtml', 'pht', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'inc', 'hphp', 'ctp',
         'sh', 'bash', 'zsh', 'exe', 'bat', 'cmd', 'com', 'cgi', 'pl', 'py', 'rb', 'vbs', 'vbe', 'ps1',
@@ -58,8 +58,8 @@ return [
         'htaccess', 'htpasswd', 'user.ini',
     ],
     'allowed_extensions' => null,
-    'session_ttl' => (int) env('STATEFUL_CHUNKING_SESSION_TTL', 21600),
-    'token_ttl' => (int) env('STATEFUL_CHUNKING_TOKEN_TTL', 7200),
+    'session_ttl' => (int) env('STATEFUL_CHUNKING_UPLOAD_SESSION_TTL', 21600),
+    'token_ttl' => (int) env('STATEFUL_CHUNKING_UPLOAD_TOKEN_TTL', 7200),
 
     /*
     |--------------------------------------------------------------------------
@@ -72,10 +72,10 @@ return [
     | Specify the storage disk to use for temporary staging and final assembled files.
     |
     */
-    'cache_store' => env('STATEFUL_CHUNKING_CACHE_STORE'),
-    'driver' => env('STATEFUL_CHUNKING_DRIVER'),
-    'storage_disk' => env('STATEFUL_CHUNKING_STORAGE_DISK', 'local'),
-    'storage_path' => env('STATEFUL_CHUNKING_STORAGE_PATH', 'uploads'),
-    'expose_server_paths' => (bool) env('STATEFUL_CHUNKING_EXPOSE_SERVER_PATHS', false),
-    'log_channel' => env('STATEFUL_CHUNKING_LOG_CHANNEL'),
+    'cache_store' => env('STATEFUL_CHUNKING_UPLOAD_CACHE_STORE'),
+    'driver' => env('STATEFUL_CHUNKING_UPLOAD_DRIVER'),
+    'storage_disk' => env('STATEFUL_CHUNKING_UPLOAD_STORAGE_DISK', 'local'),
+    'storage_path' => env('STATEFUL_CHUNKING_UPLOAD_STORAGE_PATH', 'uploads'),
+    'expose_server_paths' => (bool) env('STATEFUL_CHUNKING_UPLOAD_EXPOSE_SERVER_PATHS', false),
+    'log_channel' => env('STATEFUL_CHUNKING_UPLOAD_LOG_CHANNEL'),
 ];

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums;
 
 enum SessionStatus: string
 {

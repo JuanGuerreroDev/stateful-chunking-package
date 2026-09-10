@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\Actions;
 
-use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotReadyException;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\FileReassembled;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\SessionNotReadyException;
 
 final class ReassembleFileAction
 {

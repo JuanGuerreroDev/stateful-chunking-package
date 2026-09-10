@@ -1,13 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
 
 /**
  * Stage a chunk directory on the faked disk and backdate its files, so the sweep's
@@ -48,7 +48,7 @@ test('the sweep collects an abandoned staging directory and reports what it recl
     // Nothing was ever written to the state store for it: the session is gone.
     expect(Storage::disk('local')->exists("chunks_temp/{$abandoned}/chunk_0.tmp"))->toBeTrue();
 
-    $this->artisan('stateful-chunking:clear-stale')
+    $this->artisan('stateful-chunking-upload:clear-stale')
         ->expectsOutput('1 abandoned staging directory (2.00 KB) collected. 0 skipped as still live.')
         ->assertExitCode(0);
 
@@ -66,7 +66,7 @@ test('the sweep never touches the chunks of a session that is still live', funct
     $repo->saveSession($live);
     stageChunkDirectory($live->sessionId->value, 'STILL UPLOADING', 40000);
 
-    $this->artisan('stateful-chunking:clear-stale')
+    $this->artisan('stateful-chunking-upload:clear-stale')
         ->expectsOutput('0 abandoned staging directories (0 B) collected. 1 skipped as still live.')
         ->assertExitCode(0);
 
@@ -79,7 +79,7 @@ test('a directory younger than the session TTL is not a candidate at all', funct
     $fresh = SessionId::generate()->value;
     stageChunkDirectory($fresh, 'JUST WRITTEN', 0);
 
-    $this->artisan('stateful-chunking:clear-stale')
+    $this->artisan('stateful-chunking-upload:clear-stale')
         ->expectsOutput('0 abandoned staging directories (0 B) collected. 0 skipped as still live.')
         ->assertExitCode(0);
 
@@ -94,7 +94,7 @@ test('an empty staging directory is collected regardless of age', function () {
     $empty = SessionId::generate()->value;
     Storage::disk('local')->makeDirectory("chunks_temp/{$empty}");
 
-    $this->artisan('stateful-chunking:clear-stale')
+    $this->artisan('stateful-chunking-upload:clear-stale')
         ->expectsOutput('1 abandoned staging directory (0 B) collected. 0 skipped as still live.')
         ->assertExitCode(0);
 
@@ -107,7 +107,7 @@ test('dry-run reports the same collection without deleting anything', function (
     $abandoned = SessionId::generate()->value;
     stageChunkDirectory($abandoned, str_repeat('Y', 1024), 40000);
 
-    $this->artisan('stateful-chunking:clear-stale', ['--dry-run' => true])
+    $this->artisan('stateful-chunking-upload:clear-stale', ['--dry-run' => true])
         ->expectsOutput('[dry-run] 1 abandoned staging directory (1.00 KB) would be collected. 0 skipped as still live.')
         ->assertExitCode(0);
 
@@ -119,7 +119,7 @@ test('a storage adapter that cannot enumerate its staging area is told so, not r
 
     app()->bind(FileStorageInterface::class, OpaqueTestStorage::class);
 
-    $this->artisan('stateful-chunking:clear-stale')
+    $this->artisan('stateful-chunking-upload:clear-stale')
         ->expectsOutputToContain('cannot enumerate its staging area, so nothing was swept')
         ->assertExitCode(0);
 });
@@ -134,7 +134,7 @@ test('a single session can still be cleared by id, with its chunks', function ()
     $repo->saveSession($session);
     stageChunkDirectory($session->sessionId->value, 'TARGETED', 0);
 
-    $this->artisan('stateful-chunking:clear-stale', ['--session' => $session->sessionId->value])
+    $this->artisan('stateful-chunking-upload:clear-stale', ['--session' => $session->sessionId->value])
         ->expectsOutput(sprintf('Successfully cleared stale session [%s].', $session->sessionId->value))
         ->assertExitCode(0);
 
@@ -152,7 +152,7 @@ test('dry-run on a single session leaves it in place', function () {
     $repo->saveSession($session);
     stageChunkDirectory($session->sessionId->value, 'TARGETED', 0);
 
-    $this->artisan('stateful-chunking:clear-stale', [
+    $this->artisan('stateful-chunking-upload:clear-stale', [
         '--session' => $session->sessionId->value,
         '--dry-run' => true,
     ])

@@ -74,12 +74,12 @@ future change to Chunking responses must follow.
   - `src/Modules/Chunking/Infrastructure/Http/Responses/ChunkingResponse.php` — the envelope (immutable, `final`, private constructor + named constructors).
   - `src/Modules/Chunking/Infrastructure/Http/Controllers/ChunkUploadController.php` — every action returns `Illuminate\Contracts\Support\Responsable` via a `ChunkingResponse::*` named constructor.
   - `tests/Feature/ResponseEnvelopeTest.php` — pins the projection policy.
-  - `config/stateful-chunking.php` — `expose_server_paths` flag.
+  - `config/stateful-chunking-upload.php` — `expose_server_paths` flag.
 - **Dependencies**: none added; uses `illuminate/contracts` (`Responsable`), already required.
 - **Patterns to follow**:
   - One named constructor per outcome (`sessionInitiated`, `chunkUploaded`, `sessionStatus`, `fileReassembled`, `sessionCancelled`, `inputError`); the controller names the outcome, the envelope owns the shape.
   - Project sessions **only** through `publicSessionData()` — an explicit allowlist. Server-derived or caller-identifying fields (starting with `owner_id`) stay out.
-  - Gate any server path behind `config('stateful-chunking.expose_server_paths', false)`.
+  - Gate any server path behind `config('stateful-chunking-upload.expose_server_paths', false)`.
   - Omit null `message` / `data` keys in `toResponse()` so the two contract asymmetries hold (`status` = data-only, `cancel` = message-only).
   - Use the typed `asString` / `asInt` / `asBool` helpers for array access so PHPStan level 10 stays clean.
   - Mirror `ChunkingException`: presentation lives in the response object, not the controller.
@@ -88,7 +88,7 @@ future change to Chunking responses must follow.
   - Do not add `owner_id` (or any caller identifier) to a response projection.
   - Do not return real filesystem paths outside the `expose_server_paths` branch.
   - Do not log the `upload_token` (bearer credential): redact it before auditing, as `complete()` does.
-- **Configuration**: `expose_server_paths` (bool, default `false`) → env `STATEFUL_CHUNKING_EXPOSE_SERVER_PATHS`.
+- **Configuration**: `expose_server_paths` (bool, default `false`) → env `STATEFUL_CHUNKING_UPLOAD_EXPOSE_SERVER_PATHS`.
 - **Migration steps**: complete; done in one refactor with the contract held constant, so no consumer migration is required beyond the intended removal of `owner_id` / default paths.
 
 ### Verification

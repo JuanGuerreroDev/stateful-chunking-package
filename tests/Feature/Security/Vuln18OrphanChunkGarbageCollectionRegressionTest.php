@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\ChunkSessionExpired;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-18 REGRESSION TEST: Permanent disk leak through uncollected staging chunks
@@ -26,7 +26,7 @@ use Juanoecr\StatefulChunking\Tests\TestCase;
  *    mapping and the fallback lock, but never `chunks_temp/<sessionId>/`. The lazy
  *    expiry branch of `getSession()` calls exactly that method, so an abandoned
  *    session lost its state and left its bytes behind forever.
- * 2. `stateful-chunking:clear-stale` collected nothing without `--session`. It printed
+ * 2. `stateful-chunking-upload:clear-stale` collected nothing without `--session`. It printed
  *    "executed successfully" and returned SUCCESS, and the README instructed operators
  *    to schedule it hourly. That is worse than having no collector: it manufactures the
  *    belief that one exists.
@@ -57,7 +57,7 @@ class Vuln18OrphanChunkGarbageCollectionRegressionTest extends TestCase
      */
     private function backdateSession(string $sessionId): void
     {
-        $store = Cache::store(config('stateful-chunking.cache_store'));
+        $store = Cache::store(config('stateful-chunking-upload.cache_store'));
         $key = 'chunk_session:'.$sessionId;
 
         /** @var array<string, mixed> $payload */
@@ -170,7 +170,7 @@ class Vuln18OrphanChunkGarbageCollectionRegressionTest extends TestCase
 
         Storage::disk('local')->assertExists($path);
 
-        $this->artisan('stateful-chunking:clear-stale')
+        $this->artisan('stateful-chunking-upload:clear-stale')
             ->expectsOutput('1 abandoned staging directory (4.00 KB) collected. 0 skipped as still live.')
             ->assertExitCode(0);
 
@@ -203,7 +203,7 @@ class Vuln18OrphanChunkGarbageCollectionRegressionTest extends TestCase
 
         $path = $this->stageAbandonedDirectory($session->sessionId->value, 'OLD BUT ALIVE', 40000);
 
-        $this->artisan('stateful-chunking:clear-stale')
+        $this->artisan('stateful-chunking-upload:clear-stale')
             ->expectsOutput('0 abandoned staging directories (0 B) collected. 1 skipped as still live.')
             ->assertExitCode(0);
 
@@ -219,8 +219,8 @@ class Vuln18OrphanChunkGarbageCollectionRegressionTest extends TestCase
         $orphan = SessionId::generate()->value;
         $this->stageAbandonedDirectory($orphan, 'ONCE', 40000);
 
-        $this->artisan('stateful-chunking:clear-stale')->assertExitCode(0);
-        $this->artisan('stateful-chunking:clear-stale')
+        $this->artisan('stateful-chunking-upload:clear-stale')->assertExitCode(0);
+        $this->artisan('stateful-chunking-upload:clear-stale')
             ->expectsOutput('0 abandoned staging directories (0 B) collected. 0 skipped as still live.')
             ->assertExitCode(0);
     }

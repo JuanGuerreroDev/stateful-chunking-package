@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
-use Juanoecr\StatefulChunking\Facades\StatefulChunking;
+use Juanoecr\StatefulChunkingUpload\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunkingUpload\Facades\StatefulChunking;
 
 test('StatefulChunkingService generates and resolves valid upload token', function () {
     $service = new StatefulChunkingService;

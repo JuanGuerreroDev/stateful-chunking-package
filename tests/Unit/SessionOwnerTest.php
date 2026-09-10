@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Unit;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Unit;
 
 use InvalidArgumentException;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**

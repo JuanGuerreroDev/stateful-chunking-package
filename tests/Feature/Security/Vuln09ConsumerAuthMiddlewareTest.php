@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -41,7 +41,7 @@ final class RejectsGuestsMiddleware
  * gated "the chunk endpoints".
  *
  * The replacement is not a better flag — it is the extension point the package already
- * had. One entry in `stateful-chunking.routes.middleware` gates all five endpoints at
+ * had. One entry in `stateful-chunking-upload.routes.middleware` gates all five endpoints at
  * the framework level, with the host application's own guard. This test pins that: a
  * single middleware, five endpoints, no exceptions.
  *
@@ -57,7 +57,7 @@ class Vuln09ConsumerAuthMiddlewareTest extends TestCase
     {
         parent::getEnvironmentSetUp($app);
 
-        $app['config']->set('stateful-chunking.routes.middleware', ['api', RejectsGuestsMiddleware::class]);
+        $app['config']->set('stateful-chunking-upload.routes.middleware', ['api', RejectsGuestsMiddleware::class]);
     }
 
     protected function setUp(): void
@@ -66,8 +66,8 @@ class Vuln09ConsumerAuthMiddlewareTest extends TestCase
         Storage::fake('local');
 
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            Config::set("stateful-chunking.rate_limits.{$op}", 1000);
-            RateLimiter::clear("stateful-chunking-{$op}");
+            Config::set("stateful-chunking-upload.rate_limits.{$op}", 1000);
+            RateLimiter::clear("stateful-chunking-upload-{$op}");
         }
     }
 

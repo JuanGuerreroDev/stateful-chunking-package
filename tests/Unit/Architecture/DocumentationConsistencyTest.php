@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Unit\Architecture;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Unit\Architecture;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIndexOutOfBoundsException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIntegrityException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\SessionNotReadyException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\StorageFailureException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\CompleteChunkRequest;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\ChunkIndexOutOfBoundsException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\ChunkIntegrityException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\SessionNotFoundException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\SessionNotReadyException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\StorageFailureException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests\CompleteChunkRequest;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests\InitiateChunkRequest;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * Keeps the published documentation honest by checking it against the code.
@@ -258,7 +258,7 @@ class DocumentationConsistencyTest extends TestCase
     public function test_the_readme_rate_limit_table_matches_the_shipped_defaults(): void
     {
         $readme = (string) file_get_contents($this->packageRoot().'/README.md');
-        $config = require $this->packageRoot().'/config/stateful-chunking.php';
+        $config = require $this->packageRoot().'/config/stateful-chunking-upload.php';
 
         $endpoints = [
             'initiate' => '/api/chunks/initiate',

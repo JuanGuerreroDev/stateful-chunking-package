@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Validates the shape of an initiate request. Authentication is deliberately absent:
  * it is the host application's concern, declared through
- * `stateful-chunking.routes.middleware` (for example `['api', 'auth:sanctum']`), which
+ * `stateful-chunking-upload.routes.middleware` (for example `['api', 'auth:sanctum']`), which
  * gates every endpoint uniformly with the app's own guard.
  */
 final class InitiateChunkRequest extends FormRequest
@@ -19,13 +19,13 @@ final class InitiateChunkRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rawMaxFileSize = config('stateful-chunking.max_file_size_bytes', 10737418240);
+        $rawMaxFileSize = config('stateful-chunking-upload.max_file_size_bytes', 10737418240);
         $maxFileSize = is_numeric($rawMaxFileSize) ? (int) $rawMaxFileSize : 10737418240;
 
-        $rawMaxChunks = config('stateful-chunking.max_total_chunks', 10000);
+        $rawMaxChunks = config('stateful-chunking-upload.max_total_chunks', 10000);
         $maxChunks = is_numeric($rawMaxChunks) ? (int) $rawMaxChunks : 10000;
 
-        $rawForbiddenExts = config('stateful-chunking.forbidden_extensions', [
+        $rawForbiddenExts = config('stateful-chunking-upload.forbidden_extensions', [
             'php', 'phar', 'phtml', 'pht', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'inc', 'hphp', 'ctp',
             'sh', 'bash', 'zsh', 'exe', 'bat', 'cmd', 'com', 'cgi', 'pl', 'py', 'rb', 'vbs', 'vbe', 'ps1',
             'asp', 'aspx', 'cer', 'asa', 'asax', 'cfm', 'cfc', 'jsp', 'jspx', 'shtml', 'shtm',
@@ -35,7 +35,7 @@ final class InitiateChunkRequest extends FormRequest
             ? array_map(fn (mixed $ext): string => strtolower(trim(is_string($ext) ? $ext : '')), $rawForbiddenExts)
             : ['php', 'phar', 'phtml', 'sh', 'exe', 'bat', 'cgi', 'pl'];
 
-        $rawAllowedExts = config('stateful-chunking.allowed_extensions');
+        $rawAllowedExts = config('stateful-chunking-upload.allowed_extensions');
         $allowedExts = is_array($rawAllowedExts) && count($rawAllowedExts) > 0
             ? array_map(fn (mixed $ext): string => strtolower(trim(is_string($ext) ? $ext : '')), $rawAllowedExts)
             : null;
@@ -105,7 +105,7 @@ final class InitiateChunkRequest extends FormRequest
                 // and stage gigabytes of oversized chunks on disk (storage-amplification DoS),
                 // since max_file_size_bytes only caps the *declared* size, never the bytes
                 // actually written. The +1 absorbs off-by-one rounding on the final chunk.
-                $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+                $rawChunkSize = config('stateful-chunking-upload.chunk_size_bytes', 2097152);
                 $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
 
                 $fileSizeInput = $this->input('file_size');

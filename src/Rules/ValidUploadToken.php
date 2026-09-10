@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Rules;
+namespace Juanoecr\StatefulChunkingUpload\Rules;
 
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Translation\PotentiallyTranslatedString;
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunkingUpload\Core\Services\StatefulChunkingService;
 
 final class ValidUploadToken implements ValidationRule
 {

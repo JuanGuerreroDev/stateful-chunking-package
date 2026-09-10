@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
-use Juanoecr\StatefulChunking\Tests\Support\Snapshot;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\Support\Snapshot;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * Freezes the exact JSON contract of every endpoint's success envelope.
@@ -35,9 +35,9 @@ class ContractSnapshotTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.enabled', false);
+        Config::set('stateful-chunking-upload.rate_limits.enabled', false);
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            RateLimiter::clear('stateful-chunking-'.$op);
+            RateLimiter::clear('stateful-chunking-upload-'.$op);
         }
     }
 
@@ -129,7 +129,7 @@ class ContractSnapshotTest extends TestCase
 
     public function test_complete_contract_with_server_paths_exposed(): void
     {
-        Config::set('stateful-chunking.expose_server_paths', true);
+        Config::set('stateful-chunking-upload.expose_server_paths', true);
 
         $sessionId = $this->initiateAndUpload();
 

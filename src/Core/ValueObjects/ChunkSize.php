@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Core\ValueObjects;
+namespace Juanoecr\StatefulChunkingUpload\Core\ValueObjects;
 
 use InvalidArgumentException;
 

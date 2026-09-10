@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Support;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Support;
 
 use PHPUnit\Framework\Assert;
 

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Console\Commands;
+namespace Juanoecr\StatefulChunkingUpload\Console\Commands;
 
 use Illuminate\Console\Command;
-use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
-use Juanoecr\StatefulChunking\Core\Contracts\PrunableChunkStorageInterface;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\PrunableChunkStorageInterface;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
 
 final class ClearStaleSessionsCommand extends Command
 {
@@ -16,7 +16,7 @@ final class ClearStaleSessionsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'stateful-chunking:clear-stale
+    protected $signature = 'stateful-chunking-upload:clear-stale
         {--session= : Specific session ID to clear}
         {--dry-run : Report what would be collected without deleting anything}';
 
@@ -134,7 +134,7 @@ final class ClearStaleSessionsCommand extends Command
 
     private function sessionTtl(): int
     {
-        $raw = config('stateful-chunking.session_ttl', 21600);
+        $raw = config('stateful-chunking-upload.session_ttl', 21600);
 
         return is_numeric($raw) && (int) $raw > 0 ? (int) $raw : 21600;
     }

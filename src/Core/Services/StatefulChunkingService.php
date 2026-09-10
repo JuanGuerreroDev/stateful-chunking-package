@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Core\Services;
+namespace Juanoecr\StatefulChunkingUpload\Core\Services;
 
 use Illuminate\Support\Facades\Crypt;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\StagedFileDTO;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\DTOs\StagedFileDTO;
 use Throwable;
 
 final class StatefulChunkingService
 {
     private function getDefaultDisk(): string
     {
-        $disk = config('stateful-chunking.storage_disk', 'local');
+        $disk = config('stateful-chunking-upload.storage_disk', 'local');
 
         return is_string($disk) ? $disk : 'local';
     }
@@ -21,7 +21,7 @@ final class StatefulChunkingService
     {
         // The upload token has its own lifetime, deliberately shorter than the
         // chunk session's, so a leaked token expires well before the session.
-        $ttl = config('stateful-chunking.token_ttl', 7200);
+        $ttl = config('stateful-chunking-upload.token_ttl', 7200);
 
         return is_numeric($ttl) ? (int) $ttl : 7200;
     }

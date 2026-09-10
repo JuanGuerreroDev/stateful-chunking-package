@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * OFFENSIVE SECURITY TESTS: MIME Type vs File Extension Gap
@@ -32,10 +32,10 @@ class AdvSec_MimeTypeExtensionGapTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.initiate', 1000);
-        Config::set('stateful-chunking.rate_limits.upload', 1000);
-        RateLimiter::clear('stateful-chunking-initiate');
-        RateLimiter::clear('stateful-chunking-upload');
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.upload', 1000);
+        RateLimiter::clear('stateful-chunking-upload.initiate');
+        RateLimiter::clear('stateful-chunking-upload.upload');
     }
 
     // -------------------------------------------------------------------------

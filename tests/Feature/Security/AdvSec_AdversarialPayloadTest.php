@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * OFFENSIVE SECURITY TESTS: Adversarial Payloads against VULN-SEC-001 to 007
@@ -24,10 +24,10 @@ class AdvSec_AdversarialPayloadTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.initiate', 1000);
-        Config::set('stateful-chunking.rate_limits.upload', 1000);
-        RateLimiter::clear('stateful-chunking-initiate');
-        RateLimiter::clear('stateful-chunking-upload');
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.upload', 1000);
+        RateLimiter::clear('stateful-chunking-upload.initiate');
+        RateLimiter::clear('stateful-chunking-upload.upload');
     }
 
     // -------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class AdvSec_AdversarialPayloadTest extends TestCase
      */
     public function test_vuln_sec_001_raw_body_causes_memory_spike_before_413(): void
     {
-        $chunkSizeBytes = (int) config('stateful-chunking.chunk_size_bytes', 2097152);
+        $chunkSizeBytes = (int) config('stateful-chunking-upload.chunk_size_bytes', 2097152);
 
         // 10 MB payload - 5x the limit
         $oversizedPayload = str_repeat('A', 10 * 1024 * 1024);

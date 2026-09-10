@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Validator;
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
-use Juanoecr\StatefulChunking\Rules\ValidUploadToken;
+use Juanoecr\StatefulChunkingUpload\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunkingUpload\Rules\ValidUploadToken;
 
 test('ValidUploadToken rule passes for a valid unexpired upload token', function () {
     $service = new StatefulChunkingService;

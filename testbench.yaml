@@ -1,0 +1,15 @@
+# Configuration for `vendor/bin/testbench serve`, which boots a real Laravel
+# application with this package registered so the HTTP surface can be driven
+# over a socket instead of in process.
+#
+# This file is tracked on purpose. The provider's fully qualified name is package
+# structure, not a local preference, so a stale copy breaks the live probe for
+# everyone. It is excluded from the distributed archive by .gitattributes.
+providers:
+  - Juanoecr\StatefulChunkingUpload\Providers\StatefulChunkingServiceProvider
+
+env:
+  # A real store, so state survives between requests the way it does in production.
+  # The in-process suite uses the array store instead.
+  - CACHE_STORE=file
+  - CACHE_DRIVER=file

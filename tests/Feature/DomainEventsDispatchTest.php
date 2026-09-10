@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionCancelled;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkUploaded;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\FileReassembled;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\ChunkSessionCancelled;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\ChunkUploaded;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\FileReassembled;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 final class DomainEventsDispatchTest extends TestCase
 {

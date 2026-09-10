@@ -1,11 +1,11 @@
 <?php
 
-namespace Juanoecr\StatefulChunking\Tests\Unit;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Unit;
 
 use InvalidArgumentException;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 class ValueObjectsAndSanitizationTest extends TestCase
 {

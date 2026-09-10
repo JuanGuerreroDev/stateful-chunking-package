@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Controllers\ChunkUploadController;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\RequestCallerIdentity;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Contracts\ResolvesCallerIdentity;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Controllers\ChunkUploadController;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\RequestCallerIdentity;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 use ReflectionNamedType;
 use ReflectionParameter;
 
@@ -57,8 +57,8 @@ class CallerIdentitySubstitutionTest extends TestCase
         Storage::fake('local');
 
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            Config::set("stateful-chunking.rate_limits.{$op}", 1000);
-            RateLimiter::clear("stateful-chunking-{$op}");
+            Config::set("stateful-chunking-upload.rate_limits.{$op}", 1000);
+            RateLimiter::clear("stateful-chunking-upload-{$op}");
         }
     }
 
@@ -153,8 +153,8 @@ class CallerIdentitySubstitutionTest extends TestCase
     {
         $this->useTenantIdentity();
 
-        Config::set('stateful-chunking.rate_limits.initiate', 1);
-        RateLimiter::clear('stateful-chunking-initiate');
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1);
+        RateLimiter::clear('stateful-chunking-upload.initiate');
 
         $sharedIp = ['REMOTE_ADDR' => '198.51.100.66'];
 
