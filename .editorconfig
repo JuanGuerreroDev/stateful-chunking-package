@@ -1,0 +1,41 @@
+# Editor defaults, applied as you type.
+#
+# Scope, stated honestly: line endings are NOT what this file is for. `.gitattributes`
+# declares `* text=auto eol=lf` and every blob in this repository is already LF, so git
+# has that covered on its own. The CRLF you may see in a working copy on Windows is
+# git's own checkout conversion and never reaches a commit.
+#
+# What this file does cover is the surface Pint cannot reach, because Pint only ever
+# touches *.php: indentation width, charset, and final newlines in .json, .yml, .neon,
+# .xml and .md. Those are the files where inconsistency accumulates unnoticed, since no
+# gate in CI inspects them.
+#
+# Values below are measured from the files already in the repository, not imposed.
+# Excluded from the distributed archive by .gitattributes.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# YAML is indentation-sensitive and the convention is two spaces. Both files here
+# (.github/workflows/tests.yml, testbench.yaml) already use two.
+[*.{yml,yaml}]
+indent_size = 2
+
+# Markdown keeps its trailing whitespace, because there two trailing spaces are a
+# hard line break, not stray noise. docs/security/obfuscation_and_protection_guide.md
+# depends on that on four lines, and silently stripping them would change how the
+# document renders. The alternative was to rewrite those lines with explicit <br>,
+# which is tidier in principle but means editing documentation that renders correctly
+# today in order to satisfy a formatting rule. That is the wrong way round.
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
