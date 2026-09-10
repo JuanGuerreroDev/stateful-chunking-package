@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
@@ -57,7 +58,7 @@ final class CacheStateRepository implements StateRepositoryInterface
             'chunks_map' => $session->chunksMap,
             'created_at' => $session->createdAt,
             'expires_at' => $session->expiresAt,
-            'owner_id' => $session->ownerId,
+            'owner_id' => $session->ownerId?->value,
         ];
 
         $store->put($this->sessionKey($session->sessionId->value), $sessionData, $ttl);
@@ -93,7 +94,10 @@ final class CacheStateRepository implements StateRepositoryInterface
         $rawStatus = isset($sessionData['status']) && (is_string($sessionData['status']) || is_int($sessionData['status'])) ? $sessionData['status'] : 'pending';
         $rawCreatedAt = isset($sessionData['created_at']) && is_numeric($sessionData['created_at']) ? (int) $sessionData['created_at'] : 0;
         $rawExpiresAt = isset($sessionData['expires_at']) && is_numeric($sessionData['expires_at']) ? (int) $sessionData['expires_at'] : 0;
-        $rawOwnerId = isset($sessionData['owner_id']) && is_string($sessionData['owner_id']) ? $sessionData['owner_id'] : null;
+        // A payload whose owner is absent, not a string, or no longer parseable yields
+        // no owner — and a session with no owner belongs to nobody, so a corrupted or
+        // hand-edited entry fails closed instead of becoming public.
+        $rawOwnerId = SessionOwner::tryFromString($sessionData['owner_id'] ?? null);
 
         $session = new ChunkSession(
             sessionId: SessionId::fromString($rawSessionId),
@@ -140,9 +144,14 @@ final class CacheStateRepository implements StateRepositoryInterface
         return $this->getSession((string) $sessionId);
     }
 
-    public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status, ?int $chunkBytes = null): void
-    {
-        $this->withSessionLock($sessionId, function () use ($sessionId, $chunkIndex, $status, $chunkBytes): void {
+    public function updateChunkStatus(
+        string $sessionId,
+        int $chunkIndex,
+        string $status,
+        ?int $chunkBytes = null,
+        ?int $byteBudget = null
+    ): void {
+        $this->withSessionLock($sessionId, function () use ($sessionId, $chunkIndex, $status, $chunkBytes, $byteBudget): void {
             $session = $this->getSession($sessionId);
             if (! $session) {
                 return;
@@ -150,6 +159,17 @@ final class CacheStateRepository implements StateRepositoryInterface
 
             if ($status === 'completed') {
                 $alreadyCompleted = ($session->chunksMap[$chunkIndex] ?? null) === 'completed';
+
+                // Re-verify the budget against the state just read under the lock, not
+                // the snapshot the caller decided on. This is the only place where the
+                // read and the increment are in the same critical section, so it is the
+                // only place the check actually holds (AF-007). Throwing before any
+                // mutation leaves the session exactly as it was; the caller rolls the
+                // written chunk file back.
+                if (! $alreadyCompleted && $chunkBytes !== null && $byteBudget !== null) {
+                    $session->assertWithinBudget($chunkBytes, $byteBudget);
+                }
+
                 $session->markChunkCompleted($chunkIndex);
 
                 // Count bytes only on the first completion of a chunk, so idempotent

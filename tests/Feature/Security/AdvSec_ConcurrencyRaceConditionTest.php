@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
 use Juanoecr\StatefulChunking\Tests\TestCase;
@@ -51,7 +52,7 @@ class AdvSec_ConcurrencyRaceConditionTest extends TestCase
             fingerprint: '',
             createdAt: time(),
             expiresAt: time() + 3600,
-            ownerId: 'ip:127.0.0.1'
+            ownerId: SessionOwner::fromString('ip:127.0.0.1')
         );
 
         $this->repository->saveSession($session);

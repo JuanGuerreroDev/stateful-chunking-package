@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
@@ -144,7 +145,7 @@ class Vuln05ConcurrencyLockRegressionTest extends TestCase
             chunksMap: array_fill(0, $totalChunks, 'pending'),
             createdAt: time(),
             expiresAt: time() + 3600,
-            ownerId: 'user:test-owner'
+            ownerId: SessionOwner::fromString('user:test-owner')
         );
 
         $this->repository->saveSession($session);

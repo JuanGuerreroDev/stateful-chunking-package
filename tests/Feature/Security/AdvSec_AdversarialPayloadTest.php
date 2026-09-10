@@ -165,10 +165,16 @@ class AdvSec_AdversarialPayloadTest extends TestCase
     // -------------------------------------------------------------------------
 
     /**
-     * ATTACK: Initiate, upload chunk (session goes to uploading), then re-initiate
-     * with the same fingerprint. Confirms session is returned without status check.
+     * ATTACK: initiate, upload the file's only chunk so the session reaches COMPLETED,
+     * then re-initiate with the same fingerprint.
+     *
+     * This assertion used to read the other way round. It asserted that the same
+     * session id came back "regardless of status" and called that VULN-SEC-003
+     * CONFIRMED — a test documenting a defect as the expected behaviour, which is how
+     * the defect survived being written down. Reuse now requires the session to still
+     * be accepting chunks, so a completed one is never handed back.
      */
-    public function test_vuln_sec_003_fingerprint_reuse_returns_non_pending_session(): void
+    public function test_vuln_sec_003_fingerprint_reuse_refuses_a_non_pending_session(): void
     {
         $fingerprint = 'adv003-fingerprint-reuse-'.uniqid();
         $content = 'Small file content for fingerprint test.';
@@ -204,12 +210,19 @@ class AdvSec_AdversarialPayloadTest extends TestCase
         $initiate2->assertStatus(201);
         $sessionId2 = (string) $initiate2->json('data.session_id');
 
-        // VULN-SEC-003 CONFIRMED: same session_id returned regardless of status
-        $this->assertEquals(
+        // The first session is COMPLETED, so there is nothing left to resume: the
+        // fingerprint must produce a fresh session rather than rebind the finished one.
+        $this->assertNotEquals(
             $sessionId1,
             $sessionId2,
-            'VULN-SEC-003: Re-initiate with same fingerprint returned existing session (no status check)'
+            'A completed session must never be handed back on a fingerprint match'
         );
+
+        // And the new session is genuinely new: nothing has been uploaded to it yet.
+        $status = $this->getJson("/api/chunks/status/{$sessionId2}");
+        $status->assertStatus(200);
+        $this->assertSame('pending', $status->json('data.status'));
+        $this->assertSame(0, $status->json('data.uploaded_bytes'));
     }
 
     // -------------------------------------------------------------------------

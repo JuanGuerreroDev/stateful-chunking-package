@@ -210,8 +210,18 @@ $this->app->bind(ResolvesCallerIdentity::class, TenantCallerIdentity::class);
 ```
 
 Your implementation returns a string that is **stable** for the same caller across
-requests and **distinct** between callers who must not see each other's uploads. Namespace
-it (`tenant:7:user:42`) so one kind of identity cannot collide with another.
+requests and **distinct** between callers who must not see each other's uploads.
+
+It must be **scheme-qualified** as `<scheme>:<value>` — `tenant:7`, `api-key:abc123`,
+`tenant:7:user:42`. The scheme is the part before the first colon and can be any
+identifier you like; everything after it is opaque to the package. This is enforced by
+the `SessionOwner` value object, and it is what stops a user whose id happens to be
+`1.2.3.4` from sharing an owner and a rate-limit bucket with the caller arriving from
+that address.
+
+A resolver returning a bare identifier is a misconfiguration, not a client error, so it
+surfaces as a `500` naming the binding to fix rather than silently producing a session
+that belongs to nobody.
 
 ---
 

@@ -6,6 +6,7 @@ namespace Juanoecr\StatefulChunking\Core\Contracts;
 
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
 
 /**
  * Interface StateRepositoryInterface
@@ -42,9 +43,27 @@ interface StateRepositoryInterface
      *
      * When $chunkBytes is provided and the chunk transitions to 'completed' for the
      * first time, the session's cumulative uploaded-byte counter is incremented in
-     * the same atomic mutation, so the byte budget cannot be raced.
+     * the same atomic mutation.
+     *
+     * When $byteBudget is also provided, the budget is re-verified against the state
+     * read *inside* the critical section, and {@see UploadBudgetExceededException} is
+     * thrown before any mutation if it would be exceeded. Verifying it outside is
+     * a check-then-act race: N concurrent uploads of distinct chunk indices each read
+     * the same uploadedBytes snapshot and each pass, overshooting the budget by up to
+     * (N-1) chunks (AF-007). This docblock previously claimed the budget "cannot be
+     * raced" while nothing in the lock checked it — the claim is now the reason the
+     * parameter exists.
+     *
+     * $byteBudget is optional so that implementations written against the previous
+     * signature keep satisfying this contract.
      */
-    public function updateChunkStatus(string $sessionId, int $chunkIndex, string $status, ?int $chunkBytes = null): void;
+    public function updateChunkStatus(
+        string $sessionId,
+        int $chunkIndex,
+        string $status,
+        ?int $chunkBytes = null,
+        ?int $byteBudget = null
+    ): void;
 
     /**
      * Run $callback while holding the session's exclusive lock, so lifecycle steps
