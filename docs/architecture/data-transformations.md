@@ -49,7 +49,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | | |
 | :--- | :--- |
 | **Enters as** | integer, request body |
-| **Validated at** | `UploadChunkRequest:34` — `integer`, `min:0`, **no upper bound** |
+| **Validated at** | `UploadChunkRequest`, rule `chunk_index` — `integer`, `min:0`, **no upper bound** |
 | **Normalised at** | cast to `int` in `UploadChunkDTO::fromArray` |
 | **First trusted at** | `ChunkSession::assertChunkIndexWithinBounds()` — the upper bound lives on the aggregate root, not in the request |
 | **Status** | OK. Enforcing the bound on the aggregate is why no use case can bypass it, and `chunkPath()` interpolates with `%d`, so the index can never widen a path |
@@ -59,7 +59,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | | |
 | :--- | :--- |
 | **Enters as** | string, request body |
-| **Validated at** | `UploadChunkRequest:35` — `/^[a-f0-9]{64}$/i` |
+| **Validated at** | `UploadChunkRequest`, rule `chunk_hash` — `/^[a-f0-9]{64}$/i` |
 | **Normalised at** | `ChunkHash::__construct` → `trim()` + `strtolower()` |
 | **First trusted at** | `LocalStorageAdapter::storeChunk()` — `hash_equals()` against the computed digest, constant time |
 | **Status** | **VULN-SEC-004**: the comparison is wrapped in `strlen($chunkHash) >= 8 && strlen($chunkHash) === 64`, so a hash of any other length **skips verification silently**. Unreachable over HTTP (both the regex and the VO force 64), but it is defence-in-depth that does not defend, and a mutation removing the check would pass the suite |
@@ -69,7 +69,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | | |
 | :--- | :--- |
 | **Enters as** | string, request body on `/initiate` |
-| **Validated at** | `InitiateChunkRequest:129` — same 64-hex regex |
+| **Validated at** | `InitiateChunkRequest`, rule `total_hash` — same 64-hex regex |
 | **Normalised at** | `ChunkHash` VO |
 | **First trusted at** | `LocalStorageAdapter::reassembleFile()` — `hash_file()` + `hash_equals()`; on mismatch the assembled file is unlinked before throwing |
 | **Status** | **VULN-SEC-005**: same conditional as `chunk_hash` (`strlen($expectedTotalHash) === 64`) |
@@ -79,7 +79,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | | |
 | :--- | :--- |
 | **Enters as** | string, request body on `/initiate` — the only endpoint that accepts it |
-| **Validated at** | `InitiateChunkRequest:48-101` — `max:255`, charset `^[a-zA-Z0-9._-]+$`, then a closure: dot-file ban, trailing dot/space ban, at least one extension segment, optional whitelist, and **every** segment after the stem checked against the forbidden list (double-extension defence) |
+| **Validated at** | `InitiateChunkRequest`, rule `file_name` — `max:255`, charset `^[a-zA-Z0-9._-]+$`, then a closure: dot-file ban, trailing dot/space ban, at least one extension segment, optional whitelist, and **every** segment after the stem checked against the forbidden list (double-extension defence) |
 | **Normalised at** | never — stored verbatim; `basename()` is applied at reassembly time |
 | **First trusted at** | the final path `uploads/<sessionId>/<basename(fileName)>` |
 | **Status** | OK for traversal, but note *which* control earns that: the anchored charset excludes `/` and `\`, so no separator can appear — it does **not** exclude `..`, since dots are in the charset. A bare `..` is rejected by the dot-file guard (`str_starts_with($strValue, '.')`), and `basename()` is belt-and-braces. Relaxing that guard to allow leading-dot names would re-open `file_name = ".."`, whose assembled path `uploads/<sessionId>/..` resolves to the parent directory. **LIVE-004** is an accepted trade-off: validation is by declared extension only, with no content or real-MIME inspection. The staged-token pattern keeps the file outside the webroot, so verifying the real type is the consumer's job before it moves the file |
@@ -89,7 +89,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | | |
 | :--- | :--- |
 | **Enters as** | string, nullable, request body on `/initiate` |
-| **Validated at** | `InitiateChunkRequest:130` — `max:255` and nothing else; the content is arbitrary |
+| **Validated at** | `InitiateChunkRequest`, rule `fingerprint` — `max:255` and nothing else; the content is arbitrary |
 | **Normalised at** | never — it is an opaque client-chosen token |
 | **First trusted at** | the cache key `chunk_fingerprint:<fingerprint>`, and **nowhere else**. It no longer decides whether a session is handed back: it only *proposes* a candidate, which `InitiateChunkSessionAction::isResumable()` then has to confirm |
 | **Status** | OK. Closed by AF-005's fix: a candidate is resumed only when the caller owns it, its status is still `PENDING` or `UPLOADING`, **and** `file_name`, `file_size`, `total_chunks` and `total_hash` all match the new declaration. Before that, the fingerprint alone was enough to be handed a session describing a different file — 201 "Session initiated successfully" carrying the previous file's name and size, after which the second file's chunks overwrote the first's and `/complete` failed integrity verification for both. Cross-driver note, unchanged: `chunk_fingerprint:` (18 chars) + 255 exceeds Memcached's 250-byte key limit and the database cache driver's default 255-char key column, so resume-by-fingerprint fails silently above ~232 characters |
@@ -99,7 +99,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | | |
 | :--- | :--- |
 | **Enters as** | multipart upload, a `file` string input, or the raw request body — resolved in that order |
-| **Validated at** | `UploadChunkRequest:36` (`file` rule, `max:` in KB), then re-checked in the controller: `strlen($content) > chunk_size × 1.1` → 413 |
+| **Validated at** | `UploadChunkRequest`, rule `file` (`max:` in KB), then re-checked in the controller: `strlen($content) > chunk_size × 1.1` → 413 |
 | **Normalised at** | n/a — opaque bytes |
 | **First trusted at** | `storeChunk()` writes it, but only after the SHA-256 comparison |
 | **Status** | **VULN-SEC-001** remains open: the body is fully buffered into a PHP string *before* the size check, so the guard limits what is stored, not what is allocated. **AF-008 is closed**: the guard now reads `$content === ''`. It used to read `trim($content) === ''`, and `trim()` strips `\0`, so an all-NUL raw-body chunk — ordinary in a sparse file, a disk image or a padded binary — was rejected as "empty" despite carrying a full payload and a valid hash. Emptiness means no bytes arrived, never that the bytes look like whitespace |
@@ -109,7 +109,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | | |
 | :--- | :--- |
 | **Enters as** | integers, request body on `/initiate` |
-| **Validated at** | `InitiateChunkRequest:102-128` — `file_size` in `1..max_file_size_bytes`; `total_chunks` bounded **both ways** against `ceil(file_size / chunk_size)` with one chunk of slack, capped by `max_total_chunks` |
+| **Validated at** | `InitiateChunkRequest`, rules `file_size` and `total_chunks` — `file_size` in `1..max_file_size_bytes`; `total_chunks` bounded **both ways** against `ceil(file_size / chunk_size)` with one chunk of slack, capped by `max_total_chunks` |
 | **Normalised at** | cast to `int` |
 | **First trusted at** | `ChunkSession::byteBudget()` and `assertChunkIndexWithinBounds()` |
 | **Status** | OK. The two-sided bound is the **LIVE-001** fix: it is what stops a 1-byte declaration from staging gigabytes. **AF-007 is closed**: the budget is re-verified inside the same critical section that increments the counter, through the optional `$byteBudget` argument to `updateChunkStatus()`. The check outside the lock is kept as an early exit but is no longer the guarantee — deciding there alone let N concurrent uploads of distinct indices all pass on one `uploadedBytes` snapshot, overshooting by up to (N-1) chunks |

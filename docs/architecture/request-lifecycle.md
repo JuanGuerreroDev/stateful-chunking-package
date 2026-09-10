@@ -5,7 +5,8 @@ authorization decision is made**. That annotation is the reason this document ex
 the package's ownership guard is correct in isolation, and what breaks it is *when* it
 runs relative to validation and normalisation.
 
-> **State of this document**: AF-001, AF-002, AF-004, AF-006 and AF-010 are **resolved** — see
+> **State of this document**: every audit finding annotated here is **resolved**, except
+> AF-009, which the audit itself recorded as a note rather than an action. See
 > [ADR-0003](../decisions/0003-normalise-identity-at-the-adapter-boundary.md). Steps
 > still marked **⚠** are open findings from
 > `docs/audits/scans/2026-09-08_final_offensive_audit.md`; each remediation PR updates
@@ -22,7 +23,7 @@ bypass.
 
 | Endpoint | Input validated by | Session id validated? | Authorization point | Verdict |
 | :--- | :--- | :---: | :--- | :--- |
-| `POST /initiate` | `InitiateChunkRequest` | n/a (generated) | fingerprint reuse, now owner-matched | ⚠ AF-005 |
+| `POST /initiate` | `InitiateChunkRequest` | n/a (generated) | fingerprint reuse, gated on owner, status and declaration | resolved |
 | `POST /upload` | `UploadChunkRequest` | yes, UUID regex | on the **canonical** id, before the DTO | ok |
 | `GET /status/{id}` | route pattern | yes, route pattern | after the Action resolved it | ⚠ AF-009 |
 | `POST /complete` | `CompleteChunkRequest` | yes, UUID regex | on the canonical id | ok |
@@ -61,7 +62,7 @@ sequenceDiagram
     AC->>RP: findSessionByFingerprint()
     alt fingerprint hit and owner matches
         RP-->>AC: existing session
-        Note over AC: reuse requires an owner match — a null owner<br/>belongs to nobody, not to everybody<br/>⚠ AF-005 no status check, and the newly<br/>declared name/size/hash are still ignored
+        Note over AC: reuse requires all of: the caller owns it,<br/>status is PENDING or UPLOADING, and file_name,<br/>file_size, total_chunks and total_hash all match.<br/>A null owner belongs to nobody, not to everybody name/size/hash are still ignored
     else no hit
         AC->>AC: SessionId::generate() + new ChunkSession
         AC->>RP: saveSession() + fingerprint index
@@ -98,7 +99,7 @@ sequenceDiagram
     end
 
     CT->>CT: resolve content: file → input('file') → raw body
-    Note over CT: ⚠ AF-008 trim() rejects an all-NUL raw chunk<br/>⚠ VULN-SEC-001 body is in memory before the size check
+    Note over CT: empty means no bytes arrived, not "looks like whitespace"<br/>⚠ VULN-SEC-001 body is in memory before the size check
     CT->>CT: reject if empty (422) or > chunk_size × 1.1 (413)
 
     CT->>AC: UploadChunkDTO — already canonical
@@ -108,10 +109,11 @@ sequenceDiagram
     alt chunk already completed
         AC->>AC: re-verify hash, return session (idempotent)
     else new chunk
-        AC->>AC: assertWithinByteBudget()
-        Note over AC: ⚠ AF-007 read outside the lock that<br/>increments it — check-then-act
+        AC->>AC: assertWithinBudget() — early exit, outside the lock
+        Note over AC: this read cannot be the guarantee, so the budget<br/>travels with the state update and is re-checked there
         AC->>ST: storeChunk() — SHA-256 verified, constant time
-        AC->>RP: updateChunkStatus(completed, bytes) — inside the lock
+        AC->>RP: updateChunkStatus(completed, bytes, budget)
+        Note over RP: budget re-verified against the state read<br/>inside the same lock that increments the counter
         Note over AC,ST: on failure: deleteChunk() rollback
     end
     AC-->>CT: updated ChunkSession
