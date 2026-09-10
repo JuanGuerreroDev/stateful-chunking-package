@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\UnauthorizedSessionAccessException;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-16 REGRESSION TEST: Session id normalisation vs the ownership guard (AF-001).
@@ -40,8 +40,8 @@ class Vuln16SessionIdNormalizationRegressionTest extends TestCase
         Storage::fake('local');
 
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            Config::set("stateful-chunking.rate_limits.{$op}", 1000);
-            RateLimiter::clear("stateful-chunking-{$op}");
+            Config::set("stateful-chunking-upload.rate_limits.{$op}", 1000);
+            RateLimiter::clear("stateful-chunking-upload-{$op}");
         }
     }
 

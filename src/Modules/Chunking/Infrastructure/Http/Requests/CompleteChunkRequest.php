@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 

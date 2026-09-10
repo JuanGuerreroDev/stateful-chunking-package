@@ -1,9 +1,9 @@
 <?php
 
-namespace Juanoecr\StatefulChunking\Tests\Feature;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature;
 
 use Illuminate\Support\Facades\Log;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 class SecureLoggingAndErrorHandlingTest extends TestCase
 {

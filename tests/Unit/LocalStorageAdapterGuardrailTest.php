@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Storage\LocalStorageAdapter;
 
 test('LocalStorageAdapter stores chunk and validates checksum correctly', function () {
     Storage::fake('local');
-    config()->set('stateful-chunking.storage_disk', 'local');
-    config()->set('stateful-chunking.storage_path', 'uploads');
+    config()->set('stateful-chunking-upload.storage_disk', 'local');
+    config()->set('stateful-chunking-upload.storage_path', 'uploads');
 
     $adapter = new LocalStorageAdapter;
     $content = 'Chunk test binary content';
@@ -22,7 +22,7 @@ test('LocalStorageAdapter stores chunk and validates checksum correctly', functi
 
 test('LocalStorageAdapter throws exception on chunk hash mismatch', function () {
     Storage::fake('local');
-    config()->set('stateful-chunking.storage_disk', 'local');
+    config()->set('stateful-chunking-upload.storage_disk', 'local');
 
     $adapter = new LocalStorageAdapter;
     $content = 'Chunk content';
@@ -34,7 +34,7 @@ test('LocalStorageAdapter throws exception on chunk hash mismatch', function () 
 
 test('LocalStorageAdapter throws descriptive exception on missing chunk during reassembly', function () {
     Storage::fake('local');
-    config()->set('stateful-chunking.storage_disk', 'local');
+    config()->set('stateful-chunking-upload.storage_disk', 'local');
 
     $adapter = new LocalStorageAdapter;
 

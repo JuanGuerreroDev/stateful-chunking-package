@@ -1,8 +1,8 @@
 <?php
 
-namespace Juanoecr\StatefulChunking\Tests;
+namespace Juanoecr\StatefulChunkingUpload\Tests;
 
-use Juanoecr\StatefulChunking\Providers\StatefulChunkingServiceProvider;
+use Juanoecr\StatefulChunkingUpload\Providers\StatefulChunkingServiceProvider;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
 abstract class TestCase extends OrchestraTestCase

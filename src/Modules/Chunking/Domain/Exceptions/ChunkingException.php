@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions;
 
 use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\JsonResponse;
@@ -86,7 +86,7 @@ abstract class ChunkingException extends RuntimeException implements Responsable
      */
     public function report(): void
     {
-        $channel = config('stateful-chunking.log_channel');
+        $channel = config('stateful-chunking-upload.log_channel');
         $channelName = is_string($channel) ? $channel : null;
 
         Log::channel($channelName)->log($this->logLevel, $this->getMessage(), $this->context + [

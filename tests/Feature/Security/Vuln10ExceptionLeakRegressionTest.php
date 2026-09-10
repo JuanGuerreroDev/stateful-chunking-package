@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 use RuntimeException;
 
 /**

@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Storage;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Storage;
 
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
-use Juanoecr\StatefulChunking\Core\Contracts\PrunableChunkStorageInterface;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIntegrityException;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\StorageFailureException;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\FileStorageInterface;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\PrunableChunkStorageInterface;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\ChunkIntegrityException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\StorageFailureException;
 
 final class LocalStorageAdapter implements FileStorageInterface, PrunableChunkStorageInterface
 {
     private function getDiskName(): string
     {
-        $disk = config('stateful-chunking.storage_disk', 'local');
+        $disk = config('stateful-chunking-upload.storage_disk', 'local');
 
         return is_string($disk) ? $disk : 'local';
     }
 
     private function getBaseStoragePath(): string
     {
-        $path = config('stateful-chunking.storage_path', 'uploads');
+        $path = config('stateful-chunking-upload.storage_path', 'uploads');
 
         return is_string($path) ? $path : 'uploads';
     }

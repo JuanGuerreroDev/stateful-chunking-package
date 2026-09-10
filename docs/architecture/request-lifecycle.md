@@ -31,8 +31,8 @@ bypass.
 | `DELETE /cancel/{id}` | route pattern | yes, route pattern | on the canonical id | ok |
 
 Every route carries the group middleware from
-`config('stateful-chunking.routes.middleware')`, which defaults to `['api']`, and — **only
-while `rate_limits.enabled` is true** — its own limiter, `throttle:stateful-chunking-<op>`.
+`config('stateful-chunking-upload.routes.middleware')`, which defaults to `['api']`, and — **only
+while `rate_limits.enabled` is true** — its own limiter, `throttle:stateful-chunking-upload-<op>`.
 That flag is worth knowing about: the limiter is the mitigating control several accepted
 audit findings lean on to bound storage amplification and orphan-chunk accumulation to a
 throughput rather than an unbounded quantity. Turning it off does not just relax a quota,

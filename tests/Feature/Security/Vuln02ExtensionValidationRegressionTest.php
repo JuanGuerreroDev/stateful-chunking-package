@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-02 REGRESSION TEST: Comprehensive Extension Validation & Webshell Prevention
@@ -27,7 +27,7 @@ class Vuln02ExtensionValidationRegressionTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.initiate', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1000);
     }
 
     /**
@@ -35,7 +35,7 @@ class Vuln02ExtensionValidationRegressionTest extends TestCase
      */
     private function attemptInitiate(string $fileName): TestResponse
     {
-        RateLimiter::clear('stateful-chunking-initiate');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
 
         return $this->postJson('/api/chunks/initiate', [
             'file_name' => $fileName,
@@ -182,7 +182,7 @@ class Vuln02ExtensionValidationRegressionTest extends TestCase
     public function test_enforces_whitelist_when_configured(): void
     {
         // Configure strict whitelist: only PDF and PNG allowed
-        Config::set('stateful-chunking.allowed_extensions', ['pdf', 'png']);
+        Config::set('stateful-chunking-upload.allowed_extensions', ['pdf', 'png']);
 
         // Safe within whitelist -> Accepted (201)
         $validPdf = $this->attemptInitiate('document.pdf');

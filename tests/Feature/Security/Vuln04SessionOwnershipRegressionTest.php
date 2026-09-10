@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-04 REGRESSION TEST: Session Ownership & IDOR Protection
@@ -31,17 +31,17 @@ class Vuln04SessionOwnershipRegressionTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.initiate', 1000);
-        Config::set('stateful-chunking.rate_limits.upload', 1000);
-        Config::set('stateful-chunking.rate_limits.status', 1000);
-        Config::set('stateful-chunking.rate_limits.cancel', 1000);
-        Config::set('stateful-chunking.rate_limits.complete', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.upload', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.status', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.cancel', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.complete', 1000);
 
-        RateLimiter::clear('stateful-chunking-initiate');
-        RateLimiter::clear('stateful-chunking-upload');
-        RateLimiter::clear('stateful-chunking-status');
-        RateLimiter::clear('stateful-chunking-cancel');
-        RateLimiter::clear('stateful-chunking-complete');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
+        RateLimiter::clear('stateful-chunking-upload.upload');
+        RateLimiter::clear('stateful-chunking-upload.status');
+        RateLimiter::clear('stateful-chunking-upload.cancel');
+        RateLimiter::clear('stateful-chunking-upload.complete');
     }
 
     /**

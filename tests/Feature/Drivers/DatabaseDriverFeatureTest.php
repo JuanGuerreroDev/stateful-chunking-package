@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Drivers;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Drivers;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 class DatabaseDriverFeatureTest extends TestCase
 {
@@ -34,7 +34,7 @@ class DatabaseDriverFeatureTest extends TestCase
             'lock_table' => 'cache_locks',
             'connection' => 'sqlite',
         ]);
-        config()->set('stateful-chunking.cache_store', 'database');
+        config()->set('stateful-chunking-upload.cache_store', 'database');
 
         Storage::fake('local');
 

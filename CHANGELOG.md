@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `juanoecr/stateful-chunking` will be documented in this file.
+All notable changes to `juanoecr/stateful-chunking-upload` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -15,7 +15,7 @@ file outside the webroot, and hands the consuming application a signed token to 
 Where the file finally lives, and what business record it belongs to, stay the
 consumer's decisions.
 
-> **Operational requirement**: schedule `stateful-chunking:clear-stale`. Uploads that are
+> **Operational requirement**: schedule `stateful-chunking-upload:clear-stale`. Uploads that are
 > abandoned before `/complete` or `/cancel` leave chunks staged, and the scheduled sweep is
 > what reclaims them. See
 > [Maintenance & Garbage Collection](README.md#maintenance--garbage-collection).
@@ -34,7 +34,7 @@ consumer's decisions.
 
 - State persists through Laravel's unified cache, so Redis, Memcached, database, file, DynamoDB and array stores all work without a package-specific driver.
 - Mutations are serialised per session with the store's lock provider, falling back to an advisory file lock (`flock`) when the configured store offers none.
-- Garbage collection on two paths. `ChunkSessionExpired` fires the moment an expiry is detected and a built-in listener frees that session's staging directory in the same request; the `stateful-chunking:clear-stale` sweep collects directories that are both older than `session_ttl` **and** unknown to the state store, reports the count and bytes reclaimed, and accepts `--dry-run`.
+- Garbage collection on two paths. `ChunkSessionExpired` fires the moment an expiry is detected and a built-in listener frees that session's staging directory in the same request; the `stateful-chunking-upload:clear-stale` sweep collects directories that are both older than `session_ttl` **and** unknown to the state store, reports the count and bytes reclaimed, and accepts `--dry-run`.
 
 **Extension points**
 
@@ -56,7 +56,7 @@ Stated as controls the package ships with, not as a history of repairs. The
 pre-release hardening rounds live in the repository's commit history and in the ADRs.
 
 - **Authorization on all five endpoints, fail closed.** Every lifecycle operation compares the session's owner against the caller's identity on the aggregate root itself, so no use case can bypass it. A session with no owner belongs to nobody rather than to everybody, which means host applications creating sessions programmatically through `StateRepositoryInterface` must set an owner or those sessions stay unreachable over HTTP.
-- **Authentication is the host application's job, not the package's.** There is no auth flag to enable. Declare a guard once in `stateful-chunking.routes.middleware` and it covers all five endpoints; the package reads whatever identity that guard established and authorizes against it.
+- **Authentication is the host application's job, not the package's.** There is no auth flag to enable. Declare a guard once in `stateful-chunking-upload.routes.middleware` and it covers all five endpoints; the package reads whatever identity that guard established and authorizes against it.
 - **Identifiers are canonicalised once, at the adapter boundary, before any authorization decision.** Everything downstream receives the same canonical value, including the filesystem paths, which are derived from the resolved session rather than from the caller's string. Malformed identifiers are answered as missing sessions, never as server errors.
 - **Dual-layer SHA-256 integrity**, per chunk on arrival and over the assembled file, compared in constant time. A mismatch at assembly unlinks the partial file before failing.
 - **Hardened filename validation**: length cap, an anchored charset that admits no path separator, dot-file and trailing dot/space bans, an executable-extension blocklist applied to **every** segment after the stem rather than only the last, and an optional strict whitelist.
@@ -65,5 +65,5 @@ pre-release hardening rounds live in the repository's commit history and in the 
 - **Nothing internal is echoed to clients.** The response envelope is an explicit allowlist: owner identifiers and server paths are omitted, unexpected exceptions render sanitised, and the staged token is stripped from audit context before logging.
 - Every access-control failure raises a domain exception that renders the correct status and audits itself, so a denied request is always visible to the operator.
 
-[Unreleased]: https://github.com/JuanGuerreroDev/stateful-chunking-package/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/JuanGuerreroDev/stateful-chunking-package/releases/tag/v1.0.0
+[Unreleased]: https://github.com/JuanGuerreroDev/stateful-chunking-upload/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/JuanGuerreroDev/stateful-chunking-upload/releases/tag/v1.0.0

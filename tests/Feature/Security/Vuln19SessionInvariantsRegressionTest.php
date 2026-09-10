@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -54,7 +54,7 @@ class Vuln19SessionInvariantsRegressionTest extends TestCase
         Storage::fake('local');
 
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            Config::set("stateful-chunking.rate_limits.{$op}", 1000);
+            Config::set("stateful-chunking-upload.rate_limits.{$op}", 1000);
         }
     }
 
@@ -236,7 +236,7 @@ class Vuln19SessionInvariantsRegressionTest extends TestCase
      */
     public function test_the_byte_budget_cannot_be_exceeded_by_two_writers_deciding_on_one_snapshot(): void
     {
-        Config::set('stateful-chunking.chunk_size_bytes', 10);
+        Config::set('stateful-chunking-upload.chunk_size_bytes', 10);
 
         /** @var StateRepositoryInterface $repository */
         $repository = app(StateRepositoryInterface::class);
@@ -272,7 +272,7 @@ class Vuln19SessionInvariantsRegressionTest extends TestCase
      */
     public function test_a_refused_write_leaves_the_session_exactly_as_it_was(): void
     {
-        Config::set('stateful-chunking.chunk_size_bytes', 10);
+        Config::set('stateful-chunking-upload.chunk_size_bytes', 10);
 
         /** @var StateRepositoryInterface $repository */
         $repository = app(StateRepositoryInterface::class);

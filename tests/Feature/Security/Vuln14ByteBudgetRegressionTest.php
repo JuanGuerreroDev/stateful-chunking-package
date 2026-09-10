@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-14 REGRESSION TEST: cumulative byte budget (defense-in-depth for LIVE-001).
@@ -27,10 +27,10 @@ class Vuln14ByteBudgetRegressionTest extends TestCase
         parent::setUp();
         Storage::fake('local');
         // Small chunk size keeps the test payloads tiny.
-        Config::set('stateful-chunking.chunk_size_bytes', 1024);
-        Config::set('stateful-chunking.rate_limits.enabled', false);
+        Config::set('stateful-chunking-upload.chunk_size_bytes', 1024);
+        Config::set('stateful-chunking-upload.rate_limits.enabled', false);
         foreach (['initiate', 'upload'] as $op) {
-            RateLimiter::clear('stateful-chunking-'.$op);
+            RateLimiter::clear('stateful-chunking-upload-'.$op);
         }
     }
 

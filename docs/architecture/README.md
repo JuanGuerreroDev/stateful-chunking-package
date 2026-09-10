@@ -126,9 +126,9 @@ graph LR
     SP -->|"register(): bind"| B1["StateRepositoryInterface<br/>→ CacheStateRepository"]
     SP -->|"register(): bind"| B2["FileStorageInterface<br/>→ LocalStorageAdapter"]
     SP -->|"boot(): Event::listen"| B6["ChunkSessionExpired<br/>→ PurgeExpiredSessionChunks"]
-    SP -->|"boot(): rate limiters"| B3["throttle:stateful-chunking-*"]
+    SP -->|"boot(): rate limiters"| B3["throttle:stateful-chunking-upload-*"]
     SP -->|"boot(): loadRoutesFrom"| B4["routes/api.php"]
-    SP -->|"boot(): console"| B5["stateful-chunking:clear-stale"]
+    SP -->|"boot(): console"| B5["stateful-chunking-upload:clear-stale"]
 ```
 
 `StatefulChunkingServiceProvider` is the **only** place that knows both sides of a
@@ -169,7 +169,7 @@ rather than fixed, so they are a decision and not an oversight:
    surface, that move needs a compatibility alias.
 
 2. **The `ChunkSize` value object is never used.** The concept it models is read
-   straight from `config('stateful-chunking.chunk_size_bytes')` in three places
+   straight from `config('stateful-chunking-upload.chunk_size_bytes')` in three places
    instead, each repeating the same defensive
    `is_numeric(...) ? (int) ... : 2097152` dance, in `ChunkUploadController::upload()`,
    `InitiateChunkRequest::rules()` and `UploadChunkRequest::rules()`. A value object

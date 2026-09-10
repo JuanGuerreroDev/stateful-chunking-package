@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions;
 
 /** An unexpected failure occurred in the storage adapter (disk I/O, unsupported driver, etc.). */
 final class StorageFailureException extends ChunkingException

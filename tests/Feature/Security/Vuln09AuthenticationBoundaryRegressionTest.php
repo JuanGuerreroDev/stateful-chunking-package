@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -11,8 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\RequestCallerIdentity;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\RequestCallerIdentity;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-09 REGRESSION TEST: the authentication / authorization boundary (AF-002, AF-004).
@@ -25,7 +25,7 @@ use Juanoecr\StatefulChunking\Tests\TestCase;
  * The boundary is now explicit and enforced by these tests:
  *
  *  - The package does NOT authenticate. That is the host application's job, declared
- *    in `stateful-chunking.routes.middleware`, where one entry gates all five
+ *    in `stateful-chunking-upload.routes.middleware`, where one entry gates all five
  *    endpoints with the app's own guard.
  *  - The package DOES authorize: only it knows what a session is and who owns one.
  *    For that it reads whatever identity the consumer's guard established — through
@@ -45,8 +45,8 @@ class Vuln09AuthenticationBoundaryRegressionTest extends TestCase
         Storage::fake('local');
 
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            Config::set("stateful-chunking.rate_limits.{$op}", 1000);
-            RateLimiter::clear("stateful-chunking-{$op}");
+            Config::set("stateful-chunking-upload.rate_limits.{$op}", 1000);
+            RateLimiter::clear("stateful-chunking-upload-{$op}");
         }
     }
 
@@ -139,8 +139,8 @@ class Vuln09AuthenticationBoundaryRegressionTest extends TestCase
      */
     public function test_rate_limits_partition_per_user_not_per_shared_address(): void
     {
-        Config::set('stateful-chunking.rate_limits.initiate', 1);
-        RateLimiter::clear('stateful-chunking-initiate');
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1);
+        RateLimiter::clear('stateful-chunking-upload.initiate');
 
         $sharedIp = ['REMOTE_ADDR' => '198.51.100.77'];
         $content = 'NAT CONTENT';

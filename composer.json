@@ -1,6 +1,6 @@
 {
-    "name": "juanoecr/stateful-chunking",
-    "description": "High-performance Stateful Chunking package for Laravel featuring multi-driver state persistence, secure staged upload tokens, and SHA-256 verification.",
+    "name": "juanoecr/stateful-chunking-upload",
+    "description": "Resumable chunked file uploads for Laravel: multi-driver session state, staged upload tokens, and SHA-256 integrity verification. For splitting large files for transport, not documents for LLM embeddings.",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -22,12 +22,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Juanoecr\\StatefulChunking\\": "src/"
+            "Juanoecr\\StatefulChunkingUpload\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Juanoecr\\StatefulChunking\\Tests\\": "tests/"
+            "Juanoecr\\StatefulChunkingUpload\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -47,7 +47,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Juanoecr\\StatefulChunking\\Providers\\StatefulChunkingServiceProvider"
+                "Juanoecr\\StatefulChunkingUpload\\Providers\\StatefulChunkingServiceProvider"
             ]
         }
     },

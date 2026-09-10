@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions;
 
 /** The cumulative bytes uploaded for a session exceeded the budget its declared file_size allows. */
 final class UploadBudgetExceededException extends ChunkingException

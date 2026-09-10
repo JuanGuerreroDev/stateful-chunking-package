@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\Actions;
 
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
 
 final class InitiateChunkSessionAction
 {
@@ -27,7 +27,7 @@ final class InitiateChunkSessionAction
             }
         }
 
-        $rawTtl = config('stateful-chunking.session_ttl', 21600);
+        $rawTtl = config('stateful-chunking-upload.session_ttl', 21600);
         $ttl = is_numeric($rawTtl) ? (int) $rawTtl : 21600;
         $now = time();
 

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Responses;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Responses;
 
 use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkingException;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions\ChunkingException;
 
 /**
  * Immutable success envelope for the chunking HTTP adapter.
@@ -76,7 +76,7 @@ final class ChunkingResponse implements Responsable
 
         // Server paths are withheld by default; the consumer works with the opaque
         // upload_token, never with a real filesystem path (IDOR / path-disclosure).
-        if (config('stateful-chunking.expose_server_paths', false)) {
+        if (config('stateful-chunking-upload.expose_server_paths', false)) {
             $data['path'] = self::asString($result, 'path');
             $data['relative_path'] = self::asString($result, 'relative_path');
         }

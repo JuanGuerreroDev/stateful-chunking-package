@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-13 REGRESSION TEST: Storage-amplification DoS via unbounded total_chunks.
@@ -29,8 +29,8 @@ class Vuln13StorageAmplificationRegressionTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.initiate', 1000);
-        RateLimiter::clear('stateful-chunking-initiate');
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1000);
+        RateLimiter::clear('stateful-chunking-upload.initiate');
     }
 
     public function test_tiny_file_cannot_claim_the_maximum_chunk_count(): void
@@ -49,7 +49,7 @@ class Vuln13StorageAmplificationRegressionTest extends TestCase
 
     public function test_chunk_count_moderately_above_file_size_is_rejected(): void
     {
-        $chunkSize = (int) config('stateful-chunking.chunk_size_bytes', 2097152);
+        $chunkSize = (int) config('stateful-chunking-upload.chunk_size_bytes', 2097152);
         $fileSize = 4 * $chunkSize;         // implies exactly 4 chunks
         $inflatedChunks = 50;               // grossly more than needed
 
@@ -67,7 +67,7 @@ class Vuln13StorageAmplificationRegressionTest extends TestCase
 
     public function test_exact_chunk_count_for_file_size_is_accepted(): void
     {
-        $chunkSize = (int) config('stateful-chunking.chunk_size_bytes', 2097152);
+        $chunkSize = (int) config('stateful-chunking-upload.chunk_size_bytes', 2097152);
         $fileSize = 4 * $chunkSize;         // implies exactly 4 chunks
 
         $response = $this->postJson('/api/chunks/initiate', [
@@ -84,7 +84,7 @@ class Vuln13StorageAmplificationRegressionTest extends TestCase
 
     public function test_rounding_slack_of_one_extra_chunk_is_allowed(): void
     {
-        $chunkSize = (int) config('stateful-chunking.chunk_size_bytes', 2097152);
+        $chunkSize = (int) config('stateful-chunking-upload.chunk_size_bytes', 2097152);
         $fileSize = 4 * $chunkSize;         // implies 4 chunks; +1 slack allows 5
 
         $response = $this->postJson('/api/chunks/initiate', [

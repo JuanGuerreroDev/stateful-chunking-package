@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Core\Services\StatefulChunkingService;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\Services\StatefulChunkingService;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-06 REGRESSION TEST: Information Disclosure of Server Paths in /complete
@@ -19,7 +19,7 @@ use Juanoecr\StatefulChunking\Tests\TestCase;
  *    ('path' or 'relative_path') to public HTTP clients (CWE-200).
  * 2. The client must exclusively receive the encrypted, opaque 'upload_token'.
  * 3. The backend application resolves the real filesystem path via StatefulChunkingService::resolveToken().
- * 4. Opt-in via config('stateful-chunking.expose_server_paths', true) allows exposing paths only when explicitly configured.
+ * 4. Opt-in via config('stateful-chunking-upload.expose_server_paths', true) allows exposing paths only when explicitly configured.
  */
 class Vuln06PathDisclosureRegressionTest extends TestCase
 {
@@ -28,13 +28,13 @@ class Vuln06PathDisclosureRegressionTest extends TestCase
         parent::setUp();
         Storage::fake('local');
 
-        Config::set('stateful-chunking.rate_limits.initiate', 1000);
-        Config::set('stateful-chunking.rate_limits.upload', 1000);
-        Config::set('stateful-chunking.rate_limits.complete', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.upload', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.complete', 1000);
 
-        RateLimiter::clear('stateful-chunking-initiate');
-        RateLimiter::clear('stateful-chunking-upload');
-        RateLimiter::clear('stateful-chunking-complete');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
+        RateLimiter::clear('stateful-chunking-upload.upload');
+        RateLimiter::clear('stateful-chunking-upload.complete');
     }
 
     private function completeUploadSession(string $fileName = 'confidential.pdf', string $content = 'TOP SECRET CONTENT'): array
@@ -76,7 +76,7 @@ class Vuln06PathDisclosureRegressionTest extends TestCase
      */
     public function test_complete_response_omits_internal_paths_by_default(): void
     {
-        Config::set('stateful-chunking.expose_server_paths', false);
+        Config::set('stateful-chunking-upload.expose_server_paths', false);
 
         $result = $this->completeUploadSession();
         $response = $result['response'];
@@ -115,7 +115,7 @@ class Vuln06PathDisclosureRegressionTest extends TestCase
      */
     public function test_complete_response_includes_paths_only_when_explicitly_configured(): void
     {
-        Config::set('stateful-chunking.expose_server_paths', true);
+        Config::set('stateful-chunking-upload.expose_server_paths', true);
 
         $result = $this->completeUploadSession();
         $response = $result['response'];

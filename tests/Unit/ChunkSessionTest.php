@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
 
 test('ChunkSession initializes with default timestamps and calculates non-expired state', function () {
     $now = time();

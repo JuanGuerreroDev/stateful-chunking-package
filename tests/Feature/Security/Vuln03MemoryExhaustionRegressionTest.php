@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-03 REGRESSION TEST: Chunk Size Limit Enforcement & DoS Prevention
@@ -26,8 +26,8 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.initiate', 1000);
-        Config::set('stateful-chunking.rate_limits.upload', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.initiate', 1000);
+        Config::set('stateful-chunking-upload.rate_limits.upload', 1000);
     }
 
     /**
@@ -35,10 +35,10 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
      */
     public function test_raw_body_chunk_exceeding_size_limit_is_rejected_with_413(): void
     {
-        RateLimiter::clear('stateful-chunking-initiate');
-        RateLimiter::clear('stateful-chunking-upload');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
+        RateLimiter::clear('stateful-chunking-upload.upload');
 
-        $configuredChunkLimit = (int) config('stateful-chunking.chunk_size_bytes', 2097152); // 2 MB
+        $configuredChunkLimit = (int) config('stateful-chunking-upload.chunk_size_bytes', 2097152); // 2 MB
 
         // Craft a 3.5 MB payload (exceeding 2 MB + 10% margin)
         $oversizedData = str_repeat('DOS_RAW_BODY_TEST_PAYLOAD_BLOCK_', 120000); // ~3.84 MB
@@ -84,10 +84,10 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
      */
     public function test_multipart_file_exceeding_size_limit_is_rejected_with_422(): void
     {
-        RateLimiter::clear('stateful-chunking-initiate');
-        RateLimiter::clear('stateful-chunking-upload');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
+        RateLimiter::clear('stateful-chunking-upload.upload');
 
-        $configuredChunkLimit = (int) config('stateful-chunking.chunk_size_bytes', 2097152); // 2 MB
+        $configuredChunkLimit = (int) config('stateful-chunking-upload.chunk_size_bytes', 2097152); // 2 MB
 
         // Craft a 3.5 MB payload
         $oversizedData = str_repeat('DOS_MULTIPART_TEST_PAYLOAD_DATA_', 120000); // ~3.84 MB
@@ -133,7 +133,7 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
      */
     public function test_initiate_rejects_inconsistent_total_chunks_for_file_size(): void
     {
-        RateLimiter::clear('stateful-chunking-initiate');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
 
         $fileSize = 50 * 1024 * 1024; // 50 MB
         // With 2 MB chunk size, 50 MB requires at least 25 chunks. Declaring 1 must be rejected.
@@ -160,7 +160,7 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
      */
     public function test_initiate_accepts_sufficient_total_chunks(): void
     {
-        RateLimiter::clear('stateful-chunking-initiate');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
 
         $fileSize = 50 * 1024 * 1024; // 50 MB
         $sufficientChunks = 25; // exactly ceil(50MB / 2MB)
@@ -182,8 +182,8 @@ class Vuln03MemoryExhaustionRegressionTest extends TestCase
      */
     public function test_legitimate_chunk_within_configured_limit_is_accepted(): void
     {
-        RateLimiter::clear('stateful-chunking-initiate');
-        RateLimiter::clear('stateful-chunking-upload');
+        RateLimiter::clear('stateful-chunking-upload.initiate');
+        RateLimiter::clear('stateful-chunking-upload.upload');
 
         // Legitimate 1.5 MB chunk (under 2 MB limit)
         $validChunkData = str_repeat('VALID_LEGITIMATE_CHUNK_BLOCK_01_', 48000); // ~1.53 MB

@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Contracts\Cache\Store;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
-use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Repositories\CacheStateRepository;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * Custom cache store that intentionally does NOT implement Illuminate\Contracts\Cache\LockProvider.
@@ -127,7 +127,7 @@ class Vuln05ConcurrencyLockRegressionTest extends TestCase
 
         Config::set('cache.stores.custom_unlocked', ['driver' => 'custom_unlocked']);
         Config::set('cache.default', 'custom_unlocked');
-        Config::set('stateful-chunking.cache_store', 'custom_unlocked');
+        Config::set('stateful-chunking-upload.cache_store', 'custom_unlocked');
 
         $this->repository = new CacheStateRepository;
     }

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-15 REGRESSION TEST: reassembly is consume-once (LIVE-002).
@@ -25,9 +25,9 @@ class Vuln15ReassemblyConsumeOnceRegressionTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.enabled', false);
+        Config::set('stateful-chunking-upload.rate_limits.enabled', false);
         foreach (['initiate', 'upload', 'complete'] as $op) {
-            RateLimiter::clear('stateful-chunking-'.$op);
+            RateLimiter::clear('stateful-chunking-upload-'.$op);
         }
     }
 

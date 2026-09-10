@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Security;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Security;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * VULN-17 REGRESSION TEST: ownership must fail closed (AF-006).
@@ -39,8 +39,8 @@ class Vuln17OwnershipFailsClosedRegressionTest extends TestCase
         Storage::fake('local');
 
         foreach (['initiate', 'upload', 'status', 'complete', 'cancel'] as $op) {
-            Config::set("stateful-chunking.rate_limits.{$op}", 1000);
-            RateLimiter::clear("stateful-chunking-{$op}");
+            Config::set("stateful-chunking-upload.rate_limits.{$op}", 1000);
+            RateLimiter::clear("stateful-chunking-upload-{$op}");
         }
     }
 

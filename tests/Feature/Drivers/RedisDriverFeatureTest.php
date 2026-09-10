@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature\Drivers;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature\Drivers;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 class RedisDriverFeatureTest extends TestCase
 {
@@ -28,7 +28,7 @@ class RedisDriverFeatureTest extends TestCase
         }
 
         config()->set('cache.default', 'redis');
-        config()->set('stateful-chunking.cache_store', 'redis');
+        config()->set('stateful-chunking-upload.cache_store', 'redis');
         config()->set('database.redis.client', 'phpredis');
         config()->set('database.redis.default', [
             'url' => null,

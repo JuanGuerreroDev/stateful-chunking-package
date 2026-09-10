@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Core\Contracts;
+namespace Juanoecr\StatefulChunkingUpload\Core\Contracts;
 
 interface FileStorageInterface
 {

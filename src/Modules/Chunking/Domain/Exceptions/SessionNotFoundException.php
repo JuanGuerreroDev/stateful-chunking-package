@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions;
 
 /** The referenced upload session does not exist (or has already expired and been purged). */
 final class SessionNotFoundException extends ChunkingException

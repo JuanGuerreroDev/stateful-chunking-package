@@ -1,6 +1,6 @@
 # Enterprise Security, Obfuscation, and Code Protection Guide
 
-**Package**: `juanoecr/stateful-chunking`  
+**Package**: `juanoecr/stateful-chunking-upload`  
 **Target Audience**: Systems Architects, Security Engineers, and Enterprise Package Integrators  
 **Document Revision**: 1.1.0  
 **Classification**: Technical Reference / Best Practices Guide  
@@ -28,7 +28,7 @@
 
 ## 1. Executive Summary & Threat Model
 
-The `juanoecr/stateful-chunking` package provides stateful binary chunk reassembly and state persistence for Laravel applications. When deployed in proprietary enterprise environments or distributed commercial products, protecting intellectual property (IP) and ensuring the integrity of the underlying chunking algorithms are primary technical objectives.
+The `juanoecr/stateful-chunking-upload` package provides stateful binary chunk reassembly and state persistence for Laravel applications. When deployed in proprietary enterprise environments or distributed commercial products, protecting intellectual property (IP) and ensuring the integrity of the underlying chunking algorithms are primary technical objectives.
 
 ### Threat Matrix & Mitigation Summary
 
@@ -98,7 +98,7 @@ return [
         Finder::create()
             ->files()
             ->in('config')
-            ->name('stateful-chunking.php'),
+            ->name('stateful-chunking-upload.php'),
     ],
 
     'patchers' => [
@@ -106,8 +106,8 @@ return [
             // Preserve ServiceProvider class name resolution for Laravel Package Auto-Discovery
             if (str_ends_with($filePath, 'src/Providers/StatefulChunkingServiceProvider.php')) {
                 return str_replace(
-                    'namespace '.$prefix.'\\Juanoecr\\StatefulChunking\\Providers;',
-                    'namespace Juanoecr\\StatefulChunking\\Providers;',
+                    'namespace '.$prefix.'\\Juanoecr\\StatefulChunkingUpload\\Providers;',
+                    'namespace Juanoecr\\StatefulChunkingUpload\\Providers;',
                     $content
                 );
             }
@@ -292,8 +292,8 @@ opcache.restrict_api = /var/www/html
 
 The package's Staged Upload pattern emits an encrypted `upload_token` upon file reassembly, preventing IDOR and Path Traversal:
 - The token payload is encrypted and signed using Laravel's native `Crypt::encryptString()` (AES-256-CBC with HMAC).
-- **Token Lifetime**: The token carries its own expiry (`stateful-chunking.token_ttl`, default 7200s / 2h), deliberately shorter than the chunk session TTL, so a leaked token expires well before the session it was minted from.
-- **Path Non-Disclosure**: API responses never include the assembled file's server path; the `stateful-chunking.expose_server_paths` flag (default `false`) gates this, so consumers work exclusively with the opaque `upload_token`. The package also keeps the token out of its own audit logs.
+- **Token Lifetime**: The token carries its own expiry (`stateful-chunking-upload.token_ttl`, default 7200s / 2h), deliberately shorter than the chunk session TTL, so a leaked token expires well before the session it was minted from.
+- **Path Non-Disclosure**: API responses never include the assembled file's server path; the `stateful-chunking-upload.expose_server_paths` flag (default `false`) gates this, so consumers work exclusively with the opaque `upload_token`. The package also keeps the token out of its own audit logs.
 - **Host Application Security**: The security of `upload_token` relies strictly on the host application's `APP_KEY`. In multi-server or clustered architectures, ensure all web instances share the identical `APP_KEY`. Never log, leak, or expose decrypted tokens in frontend responses.
 
 ---

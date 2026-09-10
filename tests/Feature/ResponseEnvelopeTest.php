@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Tests\Feature;
+namespace Juanoecr\StatefulChunkingUpload\Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Juanoecr\StatefulChunking\Tests\TestCase;
+use Juanoecr\StatefulChunkingUpload\Tests\TestCase;
 
 /**
  * Pins the response envelope's public-projection policy (ChunkingResponse).
@@ -25,9 +25,9 @@ class ResponseEnvelopeTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Config::set('stateful-chunking.rate_limits.enabled', false);
+        Config::set('stateful-chunking-upload.rate_limits.enabled', false);
         foreach (['initiate', 'upload', 'complete'] as $op) {
-            RateLimiter::clear('stateful-chunking-'.$op);
+            RateLimiter::clear('stateful-chunking-upload-'.$op);
         }
     }
 
@@ -100,7 +100,7 @@ class ResponseEnvelopeTest extends TestCase
 
     public function test_complete_response_exposes_paths_only_when_configured(): void
     {
-        Config::set('stateful-chunking.expose_server_paths', true);
+        Config::set('stateful-chunking-upload.expose_server_paths', true);
 
         [$sessionId] = $this->initiateAndUploadSingleChunk(str_repeat('Z', 256));
 

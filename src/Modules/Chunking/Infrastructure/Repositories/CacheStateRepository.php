@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Repositories;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Repositories;
 
 use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Support\Facades\Cache;
-use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
-use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
-use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
-use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
+use Juanoecr\StatefulChunkingUpload\Core\Contracts\StateRepositoryInterface;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\ChunkHash;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunkingUpload\Core\ValueObjects\SessionOwner;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Enums\SessionStatus;
+use Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Events\ChunkSessionExpired;
 
 final class CacheStateRepository implements StateRepositoryInterface
 {
     private function getStoreName(): ?string
     {
-        $store = config('stateful-chunking.cache_store')
-            ?: config('stateful-chunking.driver')
+        $store = config('stateful-chunking-upload.cache_store')
+            ?: config('stateful-chunking-upload.driver')
             ?: config('cache.default');
 
         return is_string($store) ? $store : null;

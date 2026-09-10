@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Domain\Exceptions;
 
 /** Reassembly was requested before every chunk of the session was uploaded. */
 final class SessionNotReadyException extends ChunkingException

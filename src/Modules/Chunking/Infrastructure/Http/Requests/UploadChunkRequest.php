@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests;
+namespace Juanoecr\StatefulChunkingUpload\Modules\Chunking\Infrastructure\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,7 +17,7 @@ final class UploadChunkRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rawChunkSize = config('stateful-chunking.chunk_size_bytes', 2097152);
+        $rawChunkSize = config('stateful-chunking-upload.chunk_size_bytes', 2097152);
         $chunkSizeBytes = is_numeric($rawChunkSize) && (int) $rawChunkSize > 0 ? (int) $rawChunkSize : 2097152;
         // Allow a 10% buffer for protocol and multipart transport overhead
         $maxAllowedBytes = (int) ($chunkSizeBytes * 1.1);
