@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\CancelChunkSessionAction;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\GetChunkStatusAction;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\Actions\InitiateChunkSessionAction;
@@ -29,6 +30,7 @@ use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\Init
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Requests\UploadChunkRequest;
 use Juanoecr\StatefulChunking\Modules\Chunking\Infrastructure\Http\Responses\ChunkingResponse;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 /**
  * HTTP adapter for the chunking lifecycle.
@@ -65,9 +67,36 @@ final class ChunkUploadController extends Controller
         return Log::channel($channelName);
     }
 
-    private function resolveCurrentOwnerId(Request $request): string
+    /**
+     * The caller's identity as the domain models it.
+     *
+     * The port returns a plain string because it is an adapter extension point; the
+     * value object is built here, at the boundary, so the domain never holds an
+     * identity whose format it could not enforce.
+     *
+     * A resolver that returns something unusable is a misconfiguration of the host
+     * application, not a client error, so it surfaces as a server fault with a message
+     * naming the binding to fix. Swallowing it would be worse: an unparseable identity
+     * would silently become "no owner", and every session that caller creates would
+     * belong to nobody and be unreachable.
+     */
+    private function resolveCurrentOwnerId(Request $request): SessionOwner
     {
-        return $this->callerIdentity->resolve($request);
+        $resolved = $this->callerIdentity->resolve($request);
+
+        try {
+            return SessionOwner::fromString($resolved);
+        } catch (InvalidArgumentException $e) {
+            throw new RuntimeException(
+                sprintf(
+                    'The bound %s returned an unusable caller identity. %s',
+                    ResolvesCallerIdentity::class,
+                    $e->getMessage()
+                ),
+                0,
+                $e
+            );
+        }
     }
 
     /**
@@ -120,13 +149,13 @@ final class ChunkUploadController extends Controller
 
         $attemptedBy = $this->resolveCurrentOwnerId($request);
 
-        if ($session->ownerId !== $attemptedBy) {
+        if (! $session->isOwnedBy($attemptedBy)) {
             throw new UnauthorizedSessionAccessException(
                 'Unauthorized attempt to access chunk session (IDOR prevented).',
                 [
                     'session_id' => $session->sessionId->value,
-                    'session_owner' => $session->ownerId,
-                    'attempted_by' => $attemptedBy,
+                    'session_owner' => $session->ownerId?->value,
+                    'attempted_by' => $attemptedBy->value,
                     'ip' => $request->ip(),
                 ]
             );
@@ -148,7 +177,7 @@ final class ChunkUploadController extends Controller
             'file_name' => $session->fileName,
             'file_size' => $session->fileSize,
             'total_chunks' => $session->totalChunks,
-            'owner_id' => $ownerId,
+            'owner_id' => $ownerId->value,
             'ip' => $request->ip(),
         ]);
 
@@ -183,7 +212,11 @@ final class ChunkUploadController extends Controller
             $content = (string) $request->getContent();
         }
 
-        if (trim($content) === '' && ! $request->hasFile('file')) {
+        // Emptiness means "no body arrived", not "the body looks like whitespace".
+        // trim() strips NUL, so an all-zero raw-body chunk — ordinary in a sparse file,
+        // a disk image or a padded binary — was rejected as empty despite carrying a
+        // full payload and a valid chunk_hash (AF-008).
+        if ($content === '' && ! $request->hasFile('file')) {
             return ChunkingResponse::inputError('Chunk content cannot be empty', 422);
         }
 

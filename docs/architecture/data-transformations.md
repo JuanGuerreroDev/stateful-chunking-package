@@ -5,9 +5,10 @@ where it **enters**, where it is **validated**, where it is **normalised**, and 
 the code starts **trusting** it. Most defects in this package have been a disagreement
 between the last two.
 
-> **State of this document**: AF-001, AF-002, AF-003, AF-004, AF-006 and AF-010 are **resolved**.
-> Rows still marked **⚠** carry open findings from
-> `docs/audits/scans/2026-09-08_final_offensive_audit.md`.
+> **State of this document**: every finding of the 2026-09-08 audit that this table
+> tracks is now **resolved** — AF-001 through AF-008 and AF-010. Rows still marked **⚠**
+> carry findings from earlier rounds (VULN-SEC-001, 004 and 005) that remain open by
+> choice, and are named in their own rows.
 
 ## The rule this table exists to enforce
 
@@ -83,15 +84,15 @@ validated, normalised or trusted is not finished until its row moves too.
 | **First trusted at** | the final path `uploads/<sessionId>/<basename(fileName)>` |
 | **Status** | OK for traversal, but note *which* control earns that: the anchored charset excludes `/` and `\`, so no separator can appear — it does **not** exclude `..`, since dots are in the charset. A bare `..` is rejected by the dot-file guard (`str_starts_with($strValue, '.')`), and `basename()` is belt-and-braces. Relaxing that guard to allow leading-dot names would re-open `file_name = ".."`, whose assembled path `uploads/<sessionId>/..` resolves to the parent directory. **LIVE-004** is an accepted trade-off: validation is by declared extension only, with no content or real-MIME inspection. The staged-token pattern keeps the file outside the webroot, so verifying the real type is the consumer's job before it moves the file |
 
-### `fingerprint` ⚠
+### `fingerprint`
 
 | | |
 | :--- | :--- |
 | **Enters as** | string, nullable, request body on `/initiate` |
 | **Validated at** | `InitiateChunkRequest:130` — `max:255` and nothing else; the content is arbitrary |
-| **Normalised at** | never |
-| **First trusted at** | the cache key `chunk_fingerprint:<fingerprint>` **and the decision to hand back an existing session** |
-| **Status** | **AF-005**: reuse checks neither the session's status nor whether the newly declared `file_name` / `file_size` / `total_chunks` / `total_hash` match, so a second `/initiate` with the same fingerprint returns 201 while silently binding the *previous* file. Cross-driver note: `chunk_fingerprint:` (18 chars) + 255 exceeds Memcached's 250-byte key limit and the database cache driver's default 255-char key column, so resume-by-fingerprint fails silently above ~232 characters |
+| **Normalised at** | never — it is an opaque client-chosen token |
+| **First trusted at** | the cache key `chunk_fingerprint:<fingerprint>`, and **nowhere else**. It no longer decides whether a session is handed back: it only *proposes* a candidate, which `InitiateChunkSessionAction::isResumable()` then has to confirm |
+| **Status** | OK. Closed by AF-005's fix: a candidate is resumed only when the caller owns it, its status is still `PENDING` or `UPLOADING`, **and** `file_name`, `file_size`, `total_chunks` and `total_hash` all match the new declaration. Before that, the fingerprint alone was enough to be handed a session describing a different file — 201 "Session initiated successfully" carrying the previous file's name and size, after which the second file's chunks overwrote the first's and `/complete` failed integrity verification for both. Cross-driver note, unchanged: `chunk_fingerprint:` (18 chars) + 255 exceeds Memcached's 250-byte key limit and the database cache driver's default 255-char key column, so resume-by-fingerprint fails silently above ~232 characters |
 
 ### `content` — the chunk bytes ⚠
 
@@ -101,7 +102,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | **Validated at** | `UploadChunkRequest:36` (`file` rule, `max:` in KB), then re-checked in the controller: `strlen($content) > chunk_size × 1.1` → 413 |
 | **Normalised at** | n/a — opaque bytes |
 | **First trusted at** | `storeChunk()` writes it, but only after the SHA-256 comparison |
-| **Status** | **VULN-SEC-001**: the body is fully buffered into a PHP string *before* the size check, so the guard limits what is stored, not what is allocated. **AF-008**: the emptiness guard uses `trim($content) === ''`, and `trim()` strips `\0` — so an all-NUL raw-body chunk (sparse file, disk image, padded binary) is rejected as "empty" |
+| **Status** | **VULN-SEC-001** remains open: the body is fully buffered into a PHP string *before* the size check, so the guard limits what is stored, not what is allocated. **AF-008 is closed**: the guard now reads `$content === ''`. It used to read `trim($content) === ''`, and `trim()` strips `\0`, so an all-NUL raw-body chunk — ordinary in a sparse file, a disk image or a padded binary — was rejected as "empty" despite carrying a full payload and a valid hash. Emptiness means no bytes arrived, never that the bytes look like whitespace |
 
 ### `file_size` and `total_chunks`
 
@@ -111,7 +112,7 @@ validated, normalised or trusted is not finished until its row moves too.
 | **Validated at** | `InitiateChunkRequest:102-128` — `file_size` in `1..max_file_size_bytes`; `total_chunks` bounded **both ways** against `ceil(file_size / chunk_size)` with one chunk of slack, capped by `max_total_chunks` |
 | **Normalised at** | cast to `int` |
 | **First trusted at** | `ChunkSession::byteBudget()` and `assertChunkIndexWithinBounds()` |
-| **Status** | The two-sided bound is the **LIVE-001** fix: it is what stops a 1-byte declaration from staging gigabytes. **AF-007**: `assertWithinByteBudget()` reads `uploadedBytes` outside the lock that increments it, so N concurrent uploads can each pass the same check |
+| **Status** | OK. The two-sided bound is the **LIVE-001** fix: it is what stops a 1-byte declaration from staging gigabytes. **AF-007 is closed**: the budget is re-verified inside the same critical section that increments the counter, through the optional `$byteBudget` argument to `updateChunkStatus()`. The check outside the lock is kept as an early exit but is no longer the guarantee — deciding there alone let N concurrent uploads of distinct indices all pass on one `uploadedBytes` snapshot, overshooting by up to (N-1) chunks |
 
 ### `owner_id` — derived, never client input
 
@@ -119,9 +120,9 @@ validated, normalised or trusted is not finished until its row moves too.
 | :--- | :--- |
 | **Enters as** | not an input. Derived from the request's authenticated user, or its IP |
 | **Validated at** | n/a |
-| **Normalised at** | `ResolvesCallerIdentity` — one port, resolved from the container per request and shared by the controller's ownership check and the provider's rate-limit key. The default `RequestCallerIdentity` returns `user:<id>` from `getAuthIdentifier()`, else `ip:<addr>`; a consumer may rebind it (tenant, API key, calling service) and both readers follow |
-| **First trusted at** | the ownership comparison in `assertSessionOwnership()`, and the rate-limit bucket |
-| **Status** | OK. AF-004 was this row reading *"normalised twice, differently"*: the limiter had its own copy built on `property_exists($user, 'id')`, which is always false for an Eloquent model because `id` lives in `$attributes` behind `__get()` — so every authenticated caller was bucketed by IP and users behind one NAT ate each other's quota. AF-006 is closed too: guard and fingerprint reuse both require an exact match, so a `null` owner belongs to nobody. Never echoed to clients — `ChunkingResponse::publicSessionData()` is an allowlist and omits it |
+| **Normalised at** | `ResolvesCallerIdentity` — one port, resolved from the container per request and shared by the controller's ownership check and the provider's rate-limit key. The default `RequestCallerIdentity` returns `user:<id>` from `getAuthIdentifier()`, else `ip:<addr>`; a consumer may rebind it (tenant, API key, calling service) and both readers follow. The string is then wrapped in the `SessionOwner` value object at the adapter boundary, which is what **enforces** the `<scheme>:<value>` shape the namespacing depends on |
+| **First trusted at** | `ChunkSession::isOwnedBy()`, reached from `assertSessionOwnership()` and from fingerprint reuse — one fail-closed comparison on the aggregate instead of two in the callers — and the rate-limit bucket |
+| **Status** | OK. AF-004 was this row reading *"normalised twice, differently"*: the limiter had its own copy built on `property_exists($user, 'id')`, which is always false for an Eloquent model because `id` lives in `$attributes` behind `__get()` — so every authenticated caller was bucketed by IP and users behind one NAT ate each other's quota. AF-006 is closed too, and now on the aggregate: `isOwnedBy()` is false for a null owner and for a null candidate alike, so a session with no owner belongs to nobody rather than everybody, and the two readers can no longer disagree about it. Never echoed to clients — `ChunkingResponse::publicSessionData()` is an allowlist and omits it |
 
 ### `upload_token`
 

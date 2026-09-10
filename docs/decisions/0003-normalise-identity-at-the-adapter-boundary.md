@@ -157,3 +157,28 @@ paths) are the same defect at different points in the same flow and are resolved
 Relates to [ADR-0002](0002-adopt-immutable-response-envelope.md): the envelope keeps
 `owner_id` out of every response, so the identifier this decision protects is never
 echoed back to a caller in the first place.
+
+### 2026-09-10 — extended to the caller identity itself
+
+This decision originally normalised the **session** identifier at the boundary and left
+the **caller** identifier a raw string. `ChunkSession` held `ownerId` as `?string` while
+the `<scheme>:<value>` shape it depended on lived in an infrastructure class, so the
+aggregate persisted a value whose format it did not own and could not enforce — the same
+"normalised somewhere else, trusted here" arrangement this ADR exists to remove, one
+field over.
+
+`Core\ValueObjects\SessionOwner` now owns that shape and is built at the adapter
+boundary, exactly where `SessionId` is. The scheme is not an enum, because
+`ResolvesCallerIdentity` is an extension point and a consumer must be able to name its
+own (`tenant:7:user:42` is valid). What is enforced is that a scheme exists at all, which
+is what keeps the user whose id is `1.2.3.4` from sharing an owner and a rate-limit
+bucket with the caller arriving from that address — a separation the CHANGELOG promised
+when AF-004 was fixed and nothing verified until now.
+
+The fail-closed comparison moved with it, from the controller to
+`ChunkSession::isOwnedBy()`. Ownership had two readers, the HTTP guard and fingerprint
+reuse, and AF-006 was those two disagreeing; there is now one answer on the aggregate.
+
+**Consequence for consumers**: a custom `ResolvesCallerIdentity` returning a bare
+identifier now fails with a server error naming the binding to fix, rather than silently
+producing sessions that belong to nobody. Documented in the README.

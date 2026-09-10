@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionExpired;
@@ -196,7 +197,7 @@ class Vuln18OrphanChunkGarbageCollectionRegressionTest extends TestCase
             totalHash: ChunkHash::fromString(hash('sha256', 'slow')),
             fingerprint: 'vuln18-slow',
             status: SessionStatus::UPLOADING,
-            ownerId: 'user:7'
+            ownerId: SessionOwner::fromString('user:7')
         );
         $repository->saveSession($session);
 

@@ -48,8 +48,14 @@ final class UploadChunkAction
         // Defense-in-depth against storage amplification: reject the chunk before it
         // ever touches disk if it would push the session's cumulative upload past the
         // budget its declared file_size allows.
+        //
+        // This check reads a snapshot taken outside the lock, so it is an early exit
+        // and not the guarantee. The budget travels with the state update below, where
+        // it is verified again inside the critical section that increments the counter
+        // — the only place the decision cannot be raced (AF-007).
         $chunkBytes = strlen($dto->content);
-        $session->assertWithinByteBudget($chunkBytes, $this->chunkSizeBytes(), $this->maxFileSizeBytes());
+        $byteBudget = $session->byteBudget($this->chunkSizeBytes(), $this->maxFileSizeBytes());
+        $session->assertWithinBudget($chunkBytes, $byteBudget);
 
         // Store chunk payload & validate chunk SHA-256
         $this->storage->storeChunk(
@@ -65,7 +71,8 @@ final class UploadChunkAction
                 sessionId: $dto->sessionId->value,
                 chunkIndex: $dto->chunkIndex,
                 status: 'completed',
-                chunkBytes: $chunkBytes
+                chunkBytes: $chunkBytes,
+                byteBudget: $byteBudget
             );
         } catch (\Throwable $e) {
             // Rollback: clean up written chunk file so it doesn't stay orphaned on disk

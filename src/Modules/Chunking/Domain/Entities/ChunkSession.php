@@ -6,6 +6,7 @@ namespace Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities;
 
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\ChunkIndexOutOfBoundsException;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Exceptions\UploadBudgetExceededException;
@@ -26,7 +27,7 @@ final class ChunkSession
         public array $chunksMap = [],
         public int $createdAt = 0,
         public int $expiresAt = 0,
-        public ?string $ownerId = null,
+        public ?SessionOwner $ownerId = null,
         public int $uploadedBytes = 0
     ) {
         if (empty($this->chunksMap)) {
@@ -68,14 +69,19 @@ final class ChunkSession
     }
 
     /**
-     * Defense-in-depth for storage amplification: reject a chunk whose bytes would
-     * push the session's cumulative upload past the budget its declared file_size
-     * allows. Enforced on the aggregate root so no use case can bypass it.
+     * Defense-in-depth for storage amplification: reject a chunk whose bytes would push
+     * the session's cumulative upload past the budget its declared file_size allows.
+     * Enforced on the aggregate root so no use case can bypass it.
+     *
+     * The budget is passed in rather than derived here, because this same check has to
+     * run twice against two different reads of the session: once as an early exit before
+     * the bytes touch disk, and once inside the critical section that increments the
+     * counter. Deciding only outside that lock was a check-then-act race (AF-007) — N
+     * concurrent uploads of distinct indices all read one uploadedBytes snapshot and all
+     * passed, overshooting by up to (N-1) chunks. Pair it with {@see self::byteBudget()}.
      */
-    public function assertWithinByteBudget(int $incomingBytes, int $chunkSizeBytes, int $maxFileSizeBytes): void
+    public function assertWithinBudget(int $incomingBytes, int $budget): void
     {
-        $budget = $this->byteBudget($chunkSizeBytes, $maxFileSizeBytes);
-
         if ($this->uploadedBytes + $incomingBytes > $budget) {
             throw new UploadBudgetExceededException(
                 sprintf(
@@ -92,6 +98,23 @@ final class ChunkSession
                 ]
             );
         }
+    }
+
+    /**
+     * Whether $candidate is this session's owner.
+     *
+     * Fails closed on both sides of the comparison. A session with no owner belongs to
+     * nobody rather than to everybody, and a caller with no identity owns nothing. That
+     * asymmetry is the whole of AF-006: the guard used to read a null owner as "there is
+     * nothing here to protect", which made any session created programmatically without
+     * an owner readable, completable and cancellable by anyone who knew its id.
+     *
+     * The decision lives on the aggregate so every use case gets the same answer — the
+     * HTTP guard and fingerprint reuse are two callers that once disagreed.
+     */
+    public function isOwnedBy(?SessionOwner $candidate): bool
+    {
+        return $candidate !== null && $this->ownerId?->equals($candidate) === true;
     }
 
     public function recordUploadedBytes(int $bytes): void
@@ -163,7 +186,7 @@ final class ChunkSession
             'total_chunks' => $this->totalChunks,
             'total_hash' => $this->totalHash->value,
             'fingerprint' => $this->fingerprint,
-            'owner_id' => $this->ownerId,
+            'owner_id' => $this->ownerId?->value,
             'status' => $this->status->value,
             'chunks_map' => $this->chunksMap,
             'pending_chunks' => $this->getPendingChunkIndices(),

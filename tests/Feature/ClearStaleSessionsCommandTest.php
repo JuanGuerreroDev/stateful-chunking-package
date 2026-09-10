@@ -5,6 +5,7 @@ use Juanoecr\StatefulChunking\Core\Contracts\FileStorageInterface;
 use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\ValueObjects\ChunkHash;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
+use Juanoecr\StatefulChunking\Core\ValueObjects\SessionOwner;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 
@@ -34,7 +35,7 @@ function liveSession(string $fingerprint = ''): ChunkSession
         totalHash: ChunkHash::fromString(hash('sha256', 'anything')),
         fingerprint: $fingerprint,
         status: SessionStatus::UPLOADING,
-        ownerId: 'user:1'
+        ownerId: SessionOwner::fromString('user:1')
     );
 }
 

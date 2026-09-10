@@ -8,6 +8,7 @@ use Juanoecr\StatefulChunking\Core\Contracts\StateRepositoryInterface;
 use Juanoecr\StatefulChunking\Core\ValueObjects\SessionId;
 use Juanoecr\StatefulChunking\Modules\Chunking\Application\DTOs\InitiateSessionDTO;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Entities\ChunkSession;
+use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Enums\SessionStatus;
 use Juanoecr\StatefulChunking\Modules\Chunking\Domain\Events\ChunkSessionInitiated;
 
 final class InitiateChunkSessionAction
@@ -18,13 +19,10 @@ final class InitiateChunkSessionAction
 
     public function handle(InitiateSessionDTO $dto): ChunkSession
     {
-        // Reuse a session only when the fingerprint matches AND the caller is its owner.
-        // An unowned session is not a public one: treating a null owner as "matches
-        // anybody" made the fingerprint — a value the client chooses freely — enough to
-        // be handed someone else's session.
         if (! empty($dto->fingerprint)) {
             $existing = $this->repository->findSessionByFingerprint($dto->fingerprint);
-            if ($existing && $existing->ownerId === $dto->ownerId) {
+
+            if ($existing !== null && $this->isResumable($existing, $dto)) {
                 return $existing;
             }
         }
@@ -50,5 +48,41 @@ final class InitiateChunkSessionAction
         ChunkSessionInitiated::dispatch($session);
 
         return $session;
+    }
+
+    /**
+     * Whether an existing session is a resumption of *this* request, rather than merely
+     * something filed under the same fingerprint.
+     *
+     * Resume used to require only that the fingerprint matched and the caller owned the
+     * session, which made the fingerprint — a value the client picks freely — enough to
+     * be handed a session describing a different file. A client that derives one
+     * fingerprint per user or per batch instead of per file, the ordinary mistake in a
+     * multi-file uploader, got 201 "Session initiated successfully" carrying the
+     * *previous* file's name, size and hash. Its chunks then overwrote the first file's
+     * by index, and /complete failed integrity verification for both. Two files lost,
+     * with the error attributed to the wrong one (AF-005).
+     *
+     * So every part of the declaration has to agree, and the session has to still be
+     * accepting chunks. A fingerprint that now identifies a different file is not the
+     * same fingerprint, and the right answer is a new session — never a silent rebind.
+     */
+    private function isResumable(ChunkSession $existing, InitiateSessionDTO $dto): bool
+    {
+        // Ownership first: an unowned session belongs to nobody, so it is never resumable
+        // over a fingerprint match alone (AF-006).
+        if (! $existing->isOwnedBy($dto->ownerId)) {
+            return false;
+        }
+
+        // A session that has completed, failed or been cancelled has nothing to resume.
+        if (! in_array($existing->status, [SessionStatus::PENDING, SessionStatus::UPLOADING], true)) {
+            return false;
+        }
+
+        return $existing->fileName === $dto->fileName
+            && $existing->fileSize === $dto->fileSize
+            && $existing->totalChunks === $dto->totalChunks
+            && $existing->totalHash->value === $dto->totalHash->value;
     }
 }
