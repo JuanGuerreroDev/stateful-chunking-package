@@ -29,11 +29,7 @@ High-performance, decoupled Stateful Chunking package for **Laravel 10, 11, 12, 
 
 | Package | PHP       | Laravel        |
 | ------- | --------- | -------------- |
-| `2.x`   | 8.2 – 8.4 | 10, 11, 12, 13 |
 | `1.x`   | 8.2 – 8.4 | 10, 11, 12, 13 |
-
-`2.0.0` carries three breaking changes and closes an authorization bypass. Read the
-[upgrade notes](CHANGELOG.md#200---2026-09-10) before moving from `1.x`.
 
 Every supported PHP × Laravel combination is exercised on CI — the full test suite, PHPStan (level 10), and Laravel Pint — and the response shape is pinned by a byte-for-byte contract snapshot, so the JSON a consumer receives is identical across framework versions. See the [Tests workflow](.github/workflows/tests.yml).
 

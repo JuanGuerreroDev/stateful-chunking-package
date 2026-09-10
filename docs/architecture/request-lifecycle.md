@@ -8,10 +8,11 @@ runs relative to validation and normalisation.
 > **State of this document**: every audit finding annotated here is **resolved**, except
 > AF-009, which the audit itself recorded as a note rather than an action. See
 > [ADR-0003](../decisions/0003-normalise-identity-at-the-adapter-boundary.md). Steps
-> still marked **⚠** are open findings from
-> `docs/audits/scans/2026-09-08_final_offensive_audit.md`; each remediation PR updates
-> the diagrams it changes. See [`data-transformations.md`](data-transformations.md) for
-> the per-value view of the same seams.
+> still marked **⚠** are accepted risks, named in place; each PR that changes behaviour
+> updates the diagrams it touches. Finding identifiers refer to the private security
+> review under `docs/audits/`, which is not published with the package. See
+> [`data-transformations.md`](data-transformations.md) for the per-value view of the
+> same seams.
 
 ## Authorization at a glance
 

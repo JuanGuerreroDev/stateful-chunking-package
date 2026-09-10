@@ -111,6 +111,64 @@ class DocumentationConsistencyTest extends TestCase
     }
 
     /**
+     * Every relative link in the published documentation must resolve to a file that
+     * ships with the package.
+     *
+     * Two ways this breaks, and both happened here. A path can be renamed while the
+     * links to it are not, and a document can point at working material that is
+     * deliberately gitignored: the architecture docs referenced the private security
+     * review by its path, which reads as a file the reader can open and is absent from
+     * every clone. Provenance is worth recording; a path that cannot resolve is not the
+     * way to record it.
+     */
+    public function test_every_relative_documentation_link_resolves(): void
+    {
+        $broken = [];
+        $examined = 0;
+
+        foreach ($this->trackedMarkdown() as $relative => $contents) {
+            $directory = dirname($this->packageRoot().DIRECTORY_SEPARATOR.$relative);
+
+            preg_match_all('/\]\(([^)\s]+)\)/', $contents, $matches);
+
+            foreach ($matches[1] as $target) {
+                // External links and pure anchors are out of scope.
+                if (preg_match('/^(https?:|mailto:|\#)/', $target)) {
+                    continue;
+                }
+
+                $path = strtok($target, '#');
+
+                if ($path === false || $path === '') {
+                    continue;
+                }
+
+                $examined++;
+
+                if (! file_exists($directory.DIRECTORY_SEPARATOR.$path)) {
+                    $broken[] = $relative.' → '.$target;
+                }
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $broken,
+            'These documentation links do not resolve to a file that ships with the package: '
+            .implode(', ', $broken)
+        );
+
+        // Without this the assertion above passes vacuously the day the link syntax
+        // changes or the extraction regex stops matching, which is the failure mode of
+        // every check that only ever asserts an empty result.
+        $this->assertGreaterThan(
+            10,
+            $examined,
+            'Too few relative links were examined for this check to mean anything.'
+        );
+    }
+
+    /**
      * Every input the package validates must be named in the trust table.
      *
      * The table's whole purpose is to make "where is this value validated, normalised

@@ -2,7 +2,7 @@
 status: 'accepted'
 date: 2026-09-10
 decision-makers: 'Juan Manuel Guerrero Cañón (maintainer)'
-consulted: 'docs/audits/scans/2026-09-08_final_offensive_audit.md (AF-003)'
+consulted: 'AUDIT-20260908-01 offensive security review, AF-003 (private, not published with the package)'
 informed: 'Package consumers of the Chunking HTTP API and operators scheduling its maintenance command'
 ---
 
