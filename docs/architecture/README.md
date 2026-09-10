@@ -171,9 +171,9 @@ rather than fixed, so they are a decision and not an oversight:
 2. **The `ChunkSize` value object is never used.** The concept it models is read
    straight from `config('stateful-chunking.chunk_size_bytes')` in three places
    instead, each repeating the same defensive
-   `is_numeric(...) ? (int) ... : 2097152` dance: `ChunkUploadController:149`,
-   `InitiateChunkRequest:112`, `UploadChunkRequest:26`. A value object exists precisely
-   to hold that validation once.
+   `is_numeric(...) ? (int) ... : 2097152` dance, in `ChunkUploadController::upload()`,
+   `InitiateChunkRequest::rules()` and `UploadChunkRequest::rules()`. A value object
+   exists precisely to hold that validation once.
 
 3. **`Application/DTOs/StagedFileDTO::mimeType()` calls `Storage::disk(...)`**
    (`src/Modules/Chunking/Application/DTOs/StagedFileDTO.php:8,36`). This breaks the

@@ -1,5 +1,5 @@
 ---
-status: 'proposed'
+status: 'accepted'
 date: 2026-09-09
 decision-makers: 'Juan Manuel Guerrero Cañón (maintainer)'
 consulted: 'docs/audits/scans/2026-09-08_final_offensive_audit.md (AF-001, AF-006, AF-010)'
