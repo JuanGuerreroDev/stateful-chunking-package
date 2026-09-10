@@ -5,7 +5,7 @@ where it **enters**, where it is **validated**, where it is **normalised**, and 
 the code starts **trusting** it. Most defects in this package have been a disagreement
 between the last two.
 
-> **State of this document**: AF-001, AF-002, AF-004, AF-006 and AF-010 are **resolved**.
+> **State of this document**: AF-001, AF-002, AF-003, AF-004, AF-006 and AF-010 are **resolved**.
 > Rows still marked **⚠** carry open findings from
 > `docs/audits/scans/2026-09-08_final_offensive_audit.md`.
 

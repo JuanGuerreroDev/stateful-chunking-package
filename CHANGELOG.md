@@ -34,7 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Abandoned uploads no longer leak disk forever.** Purging an expired session cleared its cache entry, its fingerprint mapping and its lock, but never `chunks_temp/<sessionId>/` — and the scheduled `stateful-chunking:clear-stale` command collected nothing at all without `--session`, printing "executed successfully" every hour while the staging area grew without bound. There are now two collectors: the new `ChunkSessionExpired` event fires the moment an expiry is detected and a built-in listener frees that session's directory in the same request, and the command performs a real sweep of directories that are both older than `session_ttl` **and** unknown to the state store. It reports the number collected and the bytes reclaimed, and accepts `--dry-run` (ADR-0004). **Scheduling the command is now required, not suggested.**
 - `FileReassembled` event is now dispatched with positional arguments, restoring compatibility with Laravel 10 and 11 (their `Dispatchable::dispatch()` drops named arguments, which broke every `/complete` call).
+
+### Added
+
+- `PrunableChunkStorageInterface`, an **optional** port for storage adapters that can enumerate their own staging area. Kept separate from `FileStorageInterface` so existing custom adapters keep working unchanged; the sweep checks for it and warns instead of collecting when a bound adapter does not implement it. `LocalStorageAdapter` implements it.
+- `ChunkSessionExpired` domain event, dispatched with the session identifier and its chunk count immediately before an expired session's state is purged.
 
 <!--
   Note: entries above cover recent work only. Older changes made after the
