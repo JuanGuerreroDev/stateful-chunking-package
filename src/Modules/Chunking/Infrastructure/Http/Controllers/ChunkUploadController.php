@@ -268,8 +268,11 @@ final class ChunkUploadController extends Controller
 
         $result = $action->handle($sessionId);
 
-        // Never log the upload_token: it is a bearer credential that resolves the
-        // staged file, so it stays out of the audit trail (the rest is safe context).
+        // Keep the upload_token out of the audit trail. Encryption protects what the
+        // token says, not what holding it does: resolveToken() takes the ciphertext and
+        // nothing else, so anyone who replays the string gets the staged file resolved
+        // for them by this application, using its own APP_KEY. The threat is replay, not
+        // disclosure. Everything else in the result is safe context.
         $auditResult = $result;
         unset($auditResult['upload_token']);
 

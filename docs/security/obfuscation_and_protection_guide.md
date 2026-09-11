@@ -290,11 +290,17 @@ opcache.restrict_api = /var/www/html
 
 ### 5.4 Cryptographic Keys & Staged Upload Token Security
 
-The package's Staged Upload pattern emits an encrypted `upload_token` upon file reassembly, preventing IDOR and Path Traversal:
+The package's Staged Upload pattern emits an encrypted `upload_token` upon file reassembly. The token is a **bearer credential**, in the same sense as a signed URL or a session cookie: `resolveToken()` accepts the ciphertext and nothing else. The payload carries no caller identity, and resolving it does not consume it, so possession alone grants access to the staged file until the token expires.
+
+This distinction decides how the token must be handled. Encryption protects *what the token says* (the server path it names), not *what holding it does*. An attacker who obtains the string never needs `APP_KEY`: they replay it against any host-application endpoint that accepts an `upload_token`, and that application decrypts it for them with its own key. The threat model for a leaked token is replay, not disclosure.
+
+With that understood, the pattern closes IDOR and Path Traversal as follows:
 - The token payload is encrypted and signed using Laravel's native `Crypt::encryptString()` (AES-256-CBC with HMAC).
 - **Token Lifetime**: The token carries its own expiry (`stateful-chunking-upload.token_ttl`, default 7200s / 2h), deliberately shorter than the chunk session TTL, so a leaked token expires well before the session it was minted from.
-- **Path Non-Disclosure**: API responses never include the assembled file's server path; the `stateful-chunking-upload.expose_server_paths` flag (default `false`) gates this, so consumers work exclusively with the opaque `upload_token`. The package also keeps the token out of its own audit logs.
-- **Host Application Security**: The security of `upload_token` relies strictly on the host application's `APP_KEY`. In multi-server or clustered architectures, ensure all web instances share the identical `APP_KEY`. Never log, leak, or expose decrypted tokens in frontend responses.
+- **Path Non-Disclosure**: API responses never include the assembled file's server path; the `stateful-chunking-upload.expose_server_paths` flag (default `false`) gates this, so consumers work exclusively with the opaque `upload_token`.
+- **Log Redaction**: the package strips `upload_token` from its own audit log before writing it, because a log line is a replayable copy of the credential. This is enforced by a regression test in `SecureLoggingAndErrorHandlingTest`, not by convention.
+- **Host Application Security**: The confidentiality of the token's *payload* relies strictly on the host application's `APP_KEY`. In multi-server or clustered architectures, ensure all web instances share the identical `APP_KEY`.
+- **Handling Obligations for Consumers**: treat the token string itself as a secret in transit and at rest, exactly as you would a session cookie. Do not write it to application logs, analytics, crash reports, or URL query strings, and do not persist it beyond the exchange it was minted for. Encrypting it again adds nothing: the ciphertext *is* the credential. Where a stronger guarantee is required, bind the exchange to the authenticated user on your side, since the token does not carry that binding itself.
 
 ---
 
