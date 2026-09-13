@@ -13,4 +13,5 @@ docker-compose.yml
 /scratch/
 /docs/proposals/
 /.claude
+/CLAUDE.local.md
 /results.sarif
