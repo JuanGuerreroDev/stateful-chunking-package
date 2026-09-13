@@ -1,0 +1,50 @@
+name: Psalm Security Scan
+
+# Taint analysis: follows untrusted input from sources (request data) to
+# dangerous sinks (SQL, shell, output) and reports flows that reach a sink
+# unsanitised. Complements PHPStan, which checks types rather than data flow.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '40 7 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  psalm:
+    name: Taint analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Needed to publish the SARIF report to the code-scanning dashboard.
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, json, redis, bcmath, pdo_sqlite
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: Run Psalm taint analysis
+        run: vendor/bin/psalm --taint-analysis --report=results.sarif --report-show-info=false --no-progress
+
+      - name: Upload SARIF to code scanning
+        # Upload even when Psalm exits non-zero, so findings surface in the
+        # Security tab instead of only failing the run.
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
