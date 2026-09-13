@@ -1,0 +1,21 @@
+version: 2
+
+updates:
+  # Keeps the SHA-pinned actions current. Without this, pinning to a commit
+  # (as the tests + security workflows do) silently freezes those actions.
+  # Dependabot opens PRs that bump the SHA and update the `# vX` comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Grouping is intentionally left off for now: Dependabot opens one PR per
+    # action update. To batch them, add a `groups:` block here, e.g. group
+    # minor/patch bumps together and keep majors on their own for review.
+
+  # Watches the Composer dev toolchain (Pint, PHPStan, Pest, testbench).
+  # Runtime deps for a library live in composer.json constraints, so
+  # Dependabot mostly surfaces dev-tool and transitive security bumps here.
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly

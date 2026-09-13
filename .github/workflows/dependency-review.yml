@@ -1,0 +1,26 @@
+name: Dependency Review
+
+# Fails a pull request that introduces a Composer dependency with a known
+# vulnerability, before it reaches main. Needs the Dependency Graph, which
+# is on by default for public repositories.
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Review dependency changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Review dependencies
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
